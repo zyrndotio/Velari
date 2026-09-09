@@ -1,0 +1,6 @@
+use crate::lexer::Span;
+#[derive(Debug,Clone,PartialEq)] pub enum Value{Number(f64),Boolean(bool),String(String),Null}
+#[derive(Debug,Clone,Copy,PartialEq,Eq)] pub enum Op{Add,Sub,Mul,Div,Eq,And,Or,Neg}
+#[derive(Debug,Clone,PartialEq)] pub enum Expr{Literal(Value,Span),Variable(String,Span),Binary{left:Box<Expr>,op:Op,right:Box<Expr>,span:Span},Unary{op:Op,expr:Box<Expr>,span:Span}}
+impl Expr{pub fn span(&self)->Span{match self{Self::Literal(_,s)|Self::Variable(_,s)|Self::Binary{span:s,..}|Self::Unary{span:s,..}=>*s}}}
+#[derive(Debug,Clone,PartialEq)] pub enum Stmt{Let{name:String,value:Expr,span:Span},Print(Expr),Conditional{condition:Expr,then_branch:Vec<Stmt>,otherwise_branch:Option<Vec<Stmt>>,span:Span},RepeatLoop{iterations:Expr,body:Vec<Stmt>,span:Span},CreateWindow{title:String,width:Expr,height:Expr,span:Span},Block(Vec<Stmt>)}

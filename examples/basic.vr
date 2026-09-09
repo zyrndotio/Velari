@@ -1,0 +1,14 @@
+begin
+    let total be 10 + 5 * 2
+    let greeting be "hello"
+    print total
+    print greeting + " VelaRi"
+    if total is 20 then
+        print true
+    otherwise
+        print false
+    end
+    repeat 2 times
+        print total - 1
+    end
+end
