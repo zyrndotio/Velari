@@ -182,7 +182,7 @@ Supported expression operators, from lower to higher precedence, are:
 
 ## Explicit types and IR
 
-VelaRi 0.4.4-beta.4 accepts explicit primitive and collection annotations:
+VelaRi 0.4.4 accepts explicit primitive and collection annotations:
 
 ```velari
 begin
@@ -295,15 +295,17 @@ VelaRi 0.4.2 is a distribution and tooling milestone. It adds safer replacement 
 
 The installer copies the running binary to `~/.velari/bin/velari` on Unix-like systems and `%USERPROFILE%\\.velari\\velari.exe` on Windows. The destination directory must be on `PATH` for the `velari` command to be available globally. The command reports the path after installation rather than changing shell startup files automatically.
 
-## VelaRi 0.4.4 beta
+## VelaRi 0.4.4 stable release
 
-The 0.4.4 beta is a packaging and release-readiness milestone built on the 0.4.3 semantic typing foundation. It includes packager metadata for the VelaRi product identifier, installer-oriented release configuration, and the audited issue record in `ISSUES.md`. The beta is not yet the native application backend; the compiler still executes programs through the validated tree-walking interpreter.
+VelaRi 0.4.4 is the packaging and release-readiness milestone built on the 0.4.3 semantic typing foundation. It includes packager metadata for the VelaRi product identifier, installer-oriented release configuration, a square application icon for AppImage generation, and the audited issue record in `ISSUES.md`. The release is not yet the native application backend; the compiler still executes programs through the validated tree-walking interpreter.
 
-The beta release is published as a prerelease so the Linux and Windows binaries can be tested before a stable 0.4.4 release. Installers and additional desktop packaging formats will be enabled only after their CI builds are verified on the corresponding operating systems.
+The stable release provides a Windows `Velari-Setup.exe`, Linux `.deb` and `.AppImage` packages, and a macOS `.dmg`, alongside portable archives and SHA-256 checksums.
 
-## Next release: VelaRi 0.5.0
+## Next release: VelaRi 0.4.5
 
-The next feature milestone should stabilize the compiler boundary before native code generation. Planned work includes richer collection typing in semantic analysis, explicit function signatures in the front end, complete IR control-flow validation, deterministic project manifests, and a first executable backend prototype. Native `.exe` generation should follow those foundations rather than being added directly to the current interpreter-oriented package command.
+The 0.4.5 milestone will focus on developer workflow and runtime reliability before native code generation. Planned work includes a first-class `velari fmt` command, richer diagnostics with source excerpts and actionable suggestions, broader project manifest validation, more complete collection operations and mutation rules, and expanded control-flow and function regression coverage. The release will also improve installer smoke tests and checksum verification in CI.
+
+Native executable generation remains planned for the 0.5.x line rather than being added directly to the current interpreter-oriented package command.
 
 ## Development workflow
 
@@ -370,7 +372,7 @@ Please use GitHub Issues for bugs and feature proposals, and include a minimal V
 
 ## Release status
 
-VelaRi 0.4.4-beta.4 is the beta packaging and release-readiness milestone. VelaRi 0.4.3 remains the semantic typing foundation: collection element and map value types propagate through semantic analysis, function calls validate annotated parameters, and return values are checked against annotated function results. The typed interpreter and backend-neutral IR remain the current execution foundation; native executable generation is planned for the 0.5.x line.
+VelaRi 0.4.4 is the stable packaging and release-readiness milestone. VelaRi 0.4.3 remains the semantic typing foundation: collection element and map value types propagate through semantic analysis, function calls validate annotated parameters, and return values are checked against annotated function results. The typed interpreter and backend-neutral IR remain the current execution foundation; native executable generation is planned for the 0.5.x line. The next planned release is 0.4.5, focused on formatting, diagnostics, project validation, collection operations, and release-quality CI.
 
 ## License
 

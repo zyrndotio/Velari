@@ -15,7 +15,7 @@ use std::{
     io::Write,
     path::{Path, PathBuf},
 };
-const VERSION: &str = "0.4.4-beta.4";
+const VERSION: &str = "0.4.4";
 
 fn install_path() -> Result<PathBuf, String> {
     let home = env::var_os("HOME")
