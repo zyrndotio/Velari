@@ -36,6 +36,7 @@ The current codebase provides a coherent front-end and interpreter foundation:
 - `repeat ... times` loops
 - Printing and window-declaration syntax in the interpreter
 - Lexical scopes, assignments, functions, function calls, and return statements
+- Array and map literals, indexing, and the built-in `length` function
 - A cross-platform Rust CLI for checking, running, creating projects, and reporting the version
 
 ## Install from source
@@ -149,6 +150,23 @@ Supported expression operators, from lower to higher precedence, are:
 | 5 | `*`, `/` | Multiplication and division |
 | unary | `-` | Numeric negation |
 
+## Collections
+
+Arrays and maps are available in the interpreter:
+
+```velari
+begin
+    let numbers be [1, 2, 3, 4]
+    let user be {"name": "VelaRi", "age": 3}
+
+    print numbers[2]
+    print user["name"]
+    print length(numbers)
+end
+```
+
+Arrays use numeric indexes and maps use string keys. Out-of-bounds indexes and missing keys produce runtime errors. `length` accepts strings, arrays, and maps.
+
 ## Project layout
 
 ```text
@@ -253,6 +271,10 @@ Contributions are welcome. Before opening a pull request:
 5. Do not commit generated `target/` artifacts or secrets.
 
 Please use GitHub Issues for bugs and feature proposals, and include a minimal VelaRi source example when reporting parser, semantic, or runtime behavior.
+
+## Release status
+
+VelaRi 0.3.1 is an interpreter-focused milestone. Collection values currently use runtime representations and will receive explicit generic types and native backend mappings in a future release.
 
 ## License
 
