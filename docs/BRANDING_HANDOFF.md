@@ -34,3 +34,7 @@ Before adding assets to the repository, provide the source vector files, exporte
 ## Future integration points
 
 The assets can later be used by the GitHub README, release notes, a documentation website, an editor extension, and a project generator template. None of those integrations should become a dependency of the compiler binary.
+
+## Palette direction
+
+The recommended visual direction is cozy and calm: warm paper, blue-green structure, soft sage accents, and muted clay highlights. See [BRANDING_PALETTE.md](BRANDING_PALETTE.md) for the complete token set, combinations, and accessibility guidance.
