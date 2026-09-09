@@ -1,9 +1,162 @@
-use std::collections::HashMap;use crate::lexer::Span;
-#[derive(Debug,Clone,PartialEq)]pub enum Type{Int,Float,Bool,String,Null,Array(Box<Type>),Map(Box<Type>,Box<Type>),Function{parameters:Vec<Type>,result:Box<Type>},Unknown}
-impl Type{pub fn display(&self)->String{match self{Self::Int=>"Int".into(),Self::Float=>"Float".into(),Self::Bool=>"Bool".into(),Self::String=>"String".into(),Self::Null=>"Null".into(),Self::Array(t)=>format!("Array<{}>",t.display()),Self::Map(k,v)=>format!("Map<{}, {}>",k.display(),v.display()),Self::Function{parameters,result}=>format!("fn({}) -> {}",parameters.iter().map(Self::display).collect::<Vec<_>>().join(", "),result.display()),Self::Unknown=>"Unknown".into()}}}
-#[derive(Debug,Clone,PartialEq)]pub enum Value{Number(f64),Boolean(bool),String(String),Null,Array(Vec<Value>),Map(HashMap<String,Value>)}
-impl Value{pub fn display(&self)->String{match self{Self::Number(n)=>{if n.fract()==0.0{format!("{n:.0}")}else{n.to_string()}},Self::Boolean(v)=>v.to_string(),Self::String(s)=>s.clone(),Self::Null=>"null".into(),Self::Array(xs)=>format!("[{}]",xs.iter().map(Self::display).collect::<Vec<_>>().join(", ")),Self::Map(m)=>{let mut xs=m.iter().map(|(k,v)|format!("{k}: {}",v.display())).collect::<Vec<_>>();xs.sort();format!("{{{}}}",xs.join(", "))}}}}
-#[derive(Debug,Clone,Copy,PartialEq,Eq)]pub enum Op{Add,Sub,Mul,Div,Eq,And,Or,Neg}
-#[derive(Debug,Clone,PartialEq)]pub enum Expr{Literal(Value,Span),Variable(String,Span),Array(Vec<Expr>,Span),Map(Vec<(String,Expr)>,Span),Index{target:Box<Expr>,index:Box<Expr>,span:Span},Binary{left:Box<Expr>,op:Op,right:Box<Expr>,span:Span},Unary{op:Op,expr:Box<Expr>,span:Span},Call{name:String,arguments:Vec<Expr>,span:Span}}
-impl Expr{pub fn span(&self)->Span{match self{Self::Literal(_,s)|Self::Variable(_,s)|Self::Array(_,s)|Self::Map(_,s)|Self::Index{span:s,..}|Self::Binary{span:s,..}|Self::Unary{span:s,..}|Self::Call{span:s,..}=>*s}}}
-#[derive(Debug,Clone,PartialEq)]pub enum Stmt{Let{name:String,annotation:Option<Type>,value:Expr,span:Span},Assign{name:String,value:Expr,span:Span},Print(Expr),Assert(Expr),Return{value:Option<Expr>,span:Span},Function{name:String,parameters:Vec<(String,Option<Type>)>,return_type:Option<Type>,body:Vec<Stmt>,span:Span},Conditional{condition:Expr,then_branch:Vec<Stmt>,otherwise_branch:Option<Vec<Stmt>>,span:Span},RepeatLoop{iterations:Expr,body:Vec<Stmt>,span:Span},CreateWindow{title:String,width:Expr,height:Expr,span:Span},Block(Vec<Stmt>)}
+use crate::lexer::Span;
+use std::collections::HashMap;
+#[derive(Debug, Clone, PartialEq)]
+pub enum Type {
+    Int,
+    Float,
+    Bool,
+    String,
+    Null,
+    Array(Box<Type>),
+    Map(Box<Type>, Box<Type>),
+    Unknown,
+}
+impl Type {
+    pub fn display(&self) -> String {
+        match self {
+            Self::Int => "Int".into(),
+            Self::Float => "Float".into(),
+            Self::Bool => "Bool".into(),
+            Self::String => "String".into(),
+            Self::Null => "Null".into(),
+            Self::Array(t) => format!("Array<{}>", t.display()),
+            Self::Map(k, v) => format!("Map<{}, {}>", k.display(), v.display()),
+            Self::Unknown => "Unknown".into(),
+        }
+    }
+}
+#[derive(Debug, Clone, PartialEq)]
+pub enum Value {
+    Number(f64),
+    Boolean(bool),
+    String(String),
+    Null,
+    Array(Vec<Value>),
+    Map(HashMap<String, Value>),
+}
+impl Value {
+    pub fn display(&self) -> String {
+        match self {
+            Self::Number(n) => {
+                if n.fract() == 0.0 {
+                    format!("{n:.0}")
+                } else {
+                    n.to_string()
+                }
+            }
+            Self::Boolean(v) => v.to_string(),
+            Self::String(s) => s.clone(),
+            Self::Null => "null".into(),
+            Self::Array(xs) => format!(
+                "[{}]",
+                xs.iter().map(Self::display).collect::<Vec<_>>().join(", ")
+            ),
+            Self::Map(m) => {
+                let mut xs = m
+                    .iter()
+                    .map(|(k, v)| format!("{k}: {}", v.display()))
+                    .collect::<Vec<_>>();
+                xs.sort();
+                format!("{{{}}}", xs.join(", "))
+            }
+        }
+    }
+}
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Op {
+    Add,
+    Sub,
+    Mul,
+    Div,
+    Eq,
+    And,
+    Or,
+    Neg,
+}
+#[derive(Debug, Clone, PartialEq)]
+pub enum Expr {
+    Literal(Value, Span),
+    Variable(String, Span),
+    Array(Vec<Expr>, Span),
+    Map(Vec<(String, Expr)>, Span),
+    Index {
+        target: Box<Expr>,
+        index: Box<Expr>,
+        span: Span,
+    },
+    Binary {
+        left: Box<Expr>,
+        op: Op,
+        right: Box<Expr>,
+        span: Span,
+    },
+    Unary {
+        op: Op,
+        expr: Box<Expr>,
+        span: Span,
+    },
+    Call {
+        name: String,
+        arguments: Vec<Expr>,
+        span: Span,
+    },
+}
+impl Expr {
+    pub fn span(&self) -> Span {
+        match self {
+            Self::Literal(_, s)
+            | Self::Variable(_, s)
+            | Self::Array(_, s)
+            | Self::Map(_, s)
+            | Self::Index { span: s, .. }
+            | Self::Binary { span: s, .. }
+            | Self::Unary { span: s, .. }
+            | Self::Call { span: s, .. } => *s,
+        }
+    }
+}
+#[derive(Debug, Clone, PartialEq)]
+pub enum Stmt {
+    Let {
+        name: String,
+        annotation: Option<Type>,
+        value: Expr,
+        span: Span,
+    },
+    Assign {
+        name: String,
+        value: Expr,
+        span: Span,
+    },
+    Print(Expr),
+    Assert(Expr),
+    Return {
+        value: Option<Expr>,
+        span: Span,
+    },
+    Function {
+        name: String,
+        parameters: Vec<(String, Option<Type>)>,
+        return_type: Option<Type>,
+        body: Vec<Stmt>,
+        span: Span,
+    },
+    Conditional {
+        condition: Expr,
+        then_branch: Vec<Stmt>,
+        otherwise_branch: Option<Vec<Stmt>>,
+        span: Span,
+    },
+    RepeatLoop {
+        iterations: Expr,
+        body: Vec<Stmt>,
+        span: Span,
+    },
+    CreateWindow {
+        title: String,
+        width: Expr,
+        height: Expr,
+        span: Span,
+    },
+    Block(Vec<Stmt>),
+}
