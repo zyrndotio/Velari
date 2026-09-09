@@ -2,7 +2,7 @@
 
 VelaRi is a Rust-based programming language and compiler foundation for safe, fast, cross-platform native desktop applications. The project is designed to grow from a small, readable language core into a production-quality toolchain targeting Windows, Linux, and macOS on x86_64 and ARM64.
 
-> **Project status:** early development. The current release contains a working lexer, recoverable parser, typed semantic-analysis pass, interpreter, CLI, and example program. Native LLVM code generation, package management, and the modular desktop runtime are planned roadmap work.
+> **Project status:** early development. The current release contains a working lexer, recoverable parser, structured diagnostics, typed semantic-analysis pass, scoped interpreter, functions, and CLI. Native LLVM code generation, package management, and the modular desktop runtime are planned roadmap work.
 
 [![Rust](https://img.shields.io/badge/built_with-Rust-dea584.svg)](https://www.rust-lang.org/)
 [![License](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
@@ -35,6 +35,7 @@ The current codebase provides a coherent front-end and interpreter foundation:
 - `if` / `otherwise` conditionals
 - `repeat ... times` loops
 - Printing and window-declaration syntax in the interpreter
+- Lexical scopes, assignments, functions, function calls, and return statements
 - A cross-platform Rust CLI for checking, running, creating projects, and reporting the version
 
 ## Install from source
@@ -157,9 +158,11 @@ Supported expression operators, from lower to higher precedence, are:
 ├── NOTICE              # Copyright and license attribution
 ├── README.md           # Project documentation
 ├── examples/
-│   └── basic.vr        # End-to-end language example
+│   ├── basic.vr        # End-to-end language example
+│   └── functions.vr    # Functions and return values
 └── src/
     ├── ast.rs          # Typed abstract syntax tree
+    ├── diagnostics.rs  # Structured source diagnostics
     ├── interpreter.rs  # Fallible tree-walking runtime
     ├── lexer.rs        # Tokens, spans, and lexical diagnostics
     ├── main.rs         # CLI and compiler pipeline
@@ -215,12 +218,9 @@ When adding language behavior, include a focused regression test and update the 
 
 ### Front end
 
-- Structured diagnostic rendering with error codes and source snippets
-- Explicit type annotations and broader type inference
-- Functions, parameters, return values, local scopes, and recursion
 - Arrays, maps, indexing, iteration, and mutation rules
+- Explicit type annotations and broader type inference
 - Structs, enums, option/result types, generics, and traits
-
 ### Native compilation
 
 - Reintroduce LLVM code generation behind a stable backend interface

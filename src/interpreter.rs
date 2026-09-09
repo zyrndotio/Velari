@@ -1,4 +1,35 @@
-use std::collections::HashMap;use crate::ast::{Expr,Op,Stmt,Value};
-#[derive(Debug)]pub struct RuntimeError(pub String);pub struct Interpreter{variables:HashMap<String,Value>}
-impl Interpreter{pub fn new()->Self{Self{variables:HashMap::new()}}pub fn execute(&mut self,s:&Stmt)->Result<(),RuntimeError>{match s{Stmt::Block(xs)=>for x in xs{self.execute(x)?},Stmt::Let{name,value,..}=>{let v=self.eval(value)?;self.variables.insert(name.clone(),v);},Stmt::Print(x)=>println!("{:?}",self.eval(x)?),Stmt::Conditional{condition,then_branch,otherwise_branch,..}=>{let yes=matches!(self.eval(condition)?,Value::Boolean(true));let xs=if yes{Some(then_branch)}else{otherwise_branch.as_ref()};if let Some(xs)=xs{for x in xs{self.execute(x)?}}},Stmt::RepeatLoop{iterations,body,..}=>{let n=match self.eval(iterations)?{Value::Number(n)if n>=0.0=>n as usize,_=>return Err(RuntimeError("repeat count must be a non-negative Number".into()))};for _ in 0..n{for x in body{self.execute(x)?}}},Stmt::CreateWindow{title,width,height,..}=>println!("[VelaRi] window {:?} {}x{}",title,self.number(width)?,self.number(height)?)}Ok(())}fn number(&self,x:&Expr)->Result<f64,RuntimeError>{match self.eval(x)?{Value::Number(n)=>Ok(n),_=>Err(RuntimeError("expected Number".into()))}}fn eval(&self,x:&Expr)->Result<Value,RuntimeError>{match x{Expr::Literal(v,_)=>Ok(v.clone()),Expr::Variable(n,_)=>self.variables.get(n).cloned().ok_or_else(||RuntimeError(format!("undefined variable `{n}`"))),Expr::Unary{op,expr,..}=>match(op,self.eval(expr)?){(Op::Neg,Value::Number(n))=>Ok(Value::Number(-n)),_=>Err(RuntimeError("invalid unary operation".into()))},Expr::Binary{left,op,right,..}=>{let a=self.eval(left)?;let b=self.eval(right)?;match(op,a,b){(Op::Add,Value::Number(a),Value::Number(b))=>Ok(Value::Number(a+b)),(Op::Add,Value::String(a),Value::String(b))=>Ok(Value::String(a+&b)),(Op::Sub,Value::Number(a),Value::Number(b))=>Ok(Value::Number(a-b)),(Op::Mul,Value::Number(a),Value::Number(b))=>Ok(Value::Number(a*b)),(Op::Div,Value::Number(a),Value::Number(b))=>Ok(Value::Number(a/b)),(Op::Eq,a,b)=>Ok(Value::Boolean(a==b)),(Op::And,Value::Boolean(a),Value::Boolean(b))=>Ok(Value::Boolean(a&&b)),(Op::Or,Value::Boolean(a),Value::Boolean(b))=>Ok(Value::Boolean(a||b)),_=>Err(RuntimeError("invalid binary operation".into()))}}}}
+use std::collections::HashMap;
+use crate::ast::{Expr, Op, Stmt, Value};
+#[derive(Debug)] pub struct RuntimeError(pub String);
+enum Flow { Continue, Return(Value) }
+pub struct Interpreter { scopes: Vec<HashMap<String,Value>>, functions: HashMap<String,(Vec<String>,Vec<Stmt>)> }
+impl Interpreter {
+ pub fn new()->Self{Self{scopes:vec![HashMap::new()],functions:HashMap::new()}}
+ pub fn execute(&mut self,s:&Stmt)->Result<(),RuntimeError>{self.collect(s);match self.exec(s)?{Flow::Continue=>Ok(()),Flow::Return(_)=>Err(RuntimeError("return outside function".into()))}}
+ fn collect(&mut self,s:&Stmt){match s{Stmt::Block(xs)=>for x in xs{self.collect(x)},Stmt::Function{name,parameters,body,..}=>{self.functions.insert(name.clone(),(parameters.clone(),body.clone()));},_=>{}}}
+ fn push(&mut self){self.scopes.push(HashMap::new())}fn pop(&mut self){self.scopes.pop();}
+ fn lookup(&self,n:&str)->Option<Value>{self.scopes.iter().rev().find_map(|s|s.get(n).cloned())}
+ fn define(&mut self,n:String,v:Value){self.scopes.last_mut().unwrap().insert(n,v);}
+ fn assign(&mut self,n:&str,v:Value)->bool{for s in self.scopes.iter_mut().rev(){if s.contains_key(n){s.insert(n.to_string(),v);return true}}false}
+ fn exec(&mut self,s:&Stmt)->Result<Flow,RuntimeError>{match s{
+  Stmt::Block(xs)=>{for x in xs{if let Flow::Return(v)=self.exec(x)?{return Ok(Flow::Return(v));}}Ok(Flow::Continue)},
+  Stmt::Let{name,value,..}=>{let v=self.eval(value)?;self.define(name.clone(),v);Ok(Flow::Continue)},
+  Stmt::Assign{name,value,..}=>{let v=self.eval(value)?;if !self.assign(name,v){return Err(RuntimeError(format!("undefined variable `{name}`")));}Ok(Flow::Continue)},
+  Stmt::Print(x)=>{println!("{:?}",self.eval(x)?);Ok(Flow::Continue)},
+  Stmt::Return{value,..}=>Ok(Flow::Return(value.as_ref().map(|x|self.eval(x)).transpose()?.unwrap_or(Value::Null))),
+  Stmt::Function{..}=>Ok(Flow::Continue),
+  Stmt::Conditional{condition,then_branch,otherwise_branch,..}=>{let yes=matches!(self.eval(condition)?,Value::Boolean(true));let xs=if yes{Some(then_branch)}else{otherwise_branch.as_ref()};if let Some(xs)=xs{self.push();let r=self.exec(&Stmt::Block(xs.clone()))?;self.pop();Ok(r)}else{Ok(Flow::Continue)}},
+  Stmt::RepeatLoop{iterations,body,..}=>{let n=match self.eval(iterations)?{Value::Number(n)if n>=0.0=>n as usize,_=>return Err(RuntimeError("repeat count must be a non-negative Number".into()))};for _ in 0..n{self.push();let r=self.exec(&Stmt::Block(body.clone()))?;self.pop();if let Flow::Return(v)=r{return Ok(Flow::Return(v));}}Ok(Flow::Continue)},
+  Stmt::CreateWindow{title,width,height,..}=>{println!("[VelaRi] window {:?} {}x{}",title,self.number(width)?,self.number(height)?);Ok(Flow::Continue)}
+ }}
+ fn number(&mut self,x:&Expr)->Result<f64,RuntimeError>{match self.eval(x)?{Value::Number(n)=>Ok(n),_=>Err(RuntimeError("expected Number".into()))}}
+ fn eval(&mut self,x:&Expr)->Result<Value,RuntimeError>{match x{
+  Expr::Literal(v,_)=>Ok(v.clone()),Expr::Variable(n,_)=>self.lookup(n).ok_or_else(||RuntimeError(format!("undefined variable `{n}`"))),
+  Expr::Call{name,arguments,..}=>{let(params,body)=self.functions.get(name).cloned().ok_or_else(||RuntimeError(format!("unknown function `{name}`")))?;let args=arguments.iter().map(|a|self.eval(a)).collect::<Result<Vec<_>,_>>()?;self.push();for(p,v)in params.into_iter().zip(args){self.define(p,v);}let r=self.exec(&Stmt::Block(body))?;self.pop();Ok(match r{Flow::Continue=>Value::Null,Flow::Return(v)=>v})},
+  Expr::Unary{op,expr,..}=>match(op,self.eval(expr)?){(Op::Neg,Value::Number(n))=>Ok(Value::Number(-n)),_=>Err(RuntimeError("invalid unary operation".into()))},
+  Expr::Binary{left,op,right,..}=>{let a=self.eval(left)?;let b=self.eval(right)?;match(op,a,b){(Op::Add,Value::Number(a),Value::Number(b))=>Ok(Value::Number(a+b)),(Op::Add,Value::String(a),Value::String(b))=>Ok(Value::String(a+&b)),(Op::Sub,Value::Number(a),Value::Number(b))=>Ok(Value::Number(a-b)),(Op::Mul,Value::Number(a),Value::Number(b))=>Ok(Value::Number(a*b)),(Op::Div,Value::Number(a),Value::Number(b))=>Ok(Value::Number(a/b)),(Op::Eq,a,b)=>Ok(Value::Boolean(a==b)),(Op::And,Value::Boolean(a),Value::Boolean(b))=>Ok(Value::Boolean(a&&b)),(Op::Or,Value::Boolean(a),Value::Boolean(b))=>Ok(Value::Boolean(a||b)),_=>Err(RuntimeError("invalid binary operation".into()))}}
+ }}
+
 }
+
+#[cfg(test)]mod tests{use super::*;use crate::{lexer::Lexer,parser::Parser};#[test]fn executes_function_program(){let src="begin\nfunction add(a,b)\n return a+b\nend\nlet value be add(2,3)\nend";let ast=Parser::new(Lexer::new(src).tokenize().unwrap()).parse_program().unwrap();assert!(Interpreter::new().execute(&ast).is_ok());}}
