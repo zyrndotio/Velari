@@ -2,6 +2,17 @@
 name = "velari"
 version = "0.4.3"
 edition = "2021"
-description = "VelaRi language compiler and interpreter"
+author = "zyrndotio"
+description = "Velari language compiler and interpreter"
 
 [dependencies]
+
+[package.metadata.packager]
+product-name = "Velari"
+identifier = "com.zyrndotio.velari"
+version = "0.4.3"
+# Tells the packager to build the optimized release binary right before bundling
+before-packaging-command = "cargo build --release"
+
+[package.metadata.packager.nsis]
+compression = "lzma"
