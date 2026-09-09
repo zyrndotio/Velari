@@ -1,0 +1,4 @@
+begin
+    create window with title "VelaRi Desktop Preview" and width 800 and height 500
+    print "Desktop project syntax is ready for the native backend"
+end

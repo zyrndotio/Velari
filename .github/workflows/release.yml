@@ -1,0 +1,56 @@
+name: VelaRi Release Assets
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    strategy:
+      matrix:
+        include:
+          - os: ubuntu-latest
+            target: x86_64-unknown-linux-gnu
+            archive: velari-linux-x86_64.tar.gz
+            binary: target/x86_64-unknown-linux-gnu/release/velari
+          - os: windows-latest
+            target: x86_64-pc-windows-msvc
+            archive: velari-windows-x86_64.zip
+            binary: target/x86_64-pc-windows-msvc/release/velari.exe
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+      - run: cargo test --all-targets
+      - run: cargo build --release --target ${{ matrix.target }}
+      - name: Package Unix
+        if: runner.os != 'Windows'
+        shell: bash
+        run: |
+          mkdir -p staging
+          cp "${{ matrix.binary }}" staging/velari
+          cp README.md LICENSE NOTICE staging/
+          tar -czf "${{ matrix.archive }}" -C staging .
+      - name: Package Windows
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force staging | Out-Null
+          Copy-Item "${{ matrix.binary }}" staging/velari.exe
+          Copy-Item README.md,LICENSE,NOTICE staging/
+          Compress-Archive -Path staging/* -DestinationPath "${{ matrix.archive }}" -Force
+      - name: Checksum
+        shell: bash
+        run: sha256sum "${{ matrix.archive }}" > "${{ matrix.archive }}.sha256"
+      - name: Upload release assets
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1 || gh release create "$GITHUB_REF_NAME" --title "VelaRi $GITHUB_REF_NAME" --notes "Automated VelaRi release assets."
+          gh release upload "$GITHUB_REF_NAME" "${{ matrix.archive }}" "${{ matrix.archive }}.sha256" --clobber

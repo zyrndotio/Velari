@@ -6,7 +6,7 @@ fn velari() -> Command { Command::new(env!("CARGO_BIN_EXE_velari")) }
 fn version_command_reports_current_release() {
     let output = velari().arg("version").output().unwrap();
     assert!(output.status.success());
-    assert_eq!(String::from_utf8_lossy(&output.stdout).trim(), "velari 0.3.3");
+    assert_eq!(String::from_utf8_lossy(&output.stdout).trim(), "velari 0.3.4");
 }
 
 #[test]

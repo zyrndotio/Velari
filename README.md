@@ -38,7 +38,9 @@ The current codebase provides a coherent front-end and interpreter foundation:
 - Lexical scopes, assignments, functions, function calls, and return statements
 - Array and map literals, indexing, and the built-in `length` function
 - Human-readable runtime values and executable `assert` test statements
-- A cross-platform Rust CLI for checking, running, creating projects, and reporting the version
+- Windows release automation, PowerShell installation, and installation smoke testing
+- Desktop project syntax preview and build validation groundwork
+- A cross-platform Rust CLI for checking, running, testing, creating projects, and reporting the version
 
 ## Install from source
 
@@ -67,6 +69,25 @@ To use `velari` directly from any PowerShell window, copy `target\release\velari
 
 Prebuilt source archives and release assets are published on the [GitHub Releases page](https://github.com/zyrndotio/Velari/releases). The source archive can also be built on any supported Rust host with the commands above. Release archives include a SHA-256 checksum file.
 
+
+## Windows installation
+
+The repository includes a PowerShell installer for Windows x86_64 and GitHub Actions workflows for Windows and Linux release artifacts. After cloning the repository, run:
+
+```powershell
+Set-ExecutionPolicy -Scope Process Bypass
+.\scripts\install-velari.ps1
+```
+
+The installer downloads the latest Windows release, installs `velari.exe` under `%USERPROFILE%\.velari\bin`, and adds that directory to the user PATH. Open a new PowerShell window after installation and verify the command:
+
+```powershell
+velari version
+.\scripts\test-windows-install.ps1
+```
+
+Windows and Linux release builds are produced by GitHub Actions for version tags. The current `build` command validates source and project configuration; standalone native desktop executable generation is the next compiler milestone.
+
 ## Command-line usage
 
 Run the compiler through Cargo while developing:
@@ -78,6 +99,7 @@ cargo run -- run examples/basic.vr
 cargo run -- new hello-world
 cargo run -- check hello-world/src/main.vr
 cargo run -- test hello-world
+cargo run -- build hello-world
 ```
 
 After installing the release binary, use the same commands without `cargo run --`:
@@ -96,6 +118,7 @@ velari new hello-world
 | `velari run <file>` | Validate and execute a source file with the tree-walking interpreter. |
 | `velari new <directory>` | Create a starter project containing `vela.toml`, `src/main.vr`, and a `tests/` directory. |
 | `velari test [project]` | Run every `.vr` file under the project `tests/` directory. |
+| `velari build [project]` | Validate a project for future native compilation; native `.exe` generation is not available yet. |
 
 ## Language example
 
@@ -180,6 +203,7 @@ Arrays use numeric indexes and maps use string keys. Out-of-bounds indexes and m
 ├── NOTICE              # Copyright and license attribution
 ├── README.md           # Project documentation
 ├── examples/
+│   ├── desktop/main.vr  # Desktop syntax preview
 │   ├── basic.vr        # End-to-end language example
 │   └── functions.vr    # Functions and return values
 └── src/
@@ -294,7 +318,7 @@ Please use GitHub Issues for bugs and feature proposals, and include a minimal V
 
 ## Release status
 
-VelaRi 0.3.3 is an interpreter-focused polish and developer-experience milestone. Collection values currently use runtime representations and will receive explicit generic types and native backend mappings in a future release.
+VelaRi 0.3.4 is a Windows-readiness and desktop-foundation milestone. Collection values currently use runtime representations and will receive explicit generic types and native backend mappings in a future release.
 
 ## License
 
