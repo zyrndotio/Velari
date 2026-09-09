@@ -6,7 +6,7 @@ fn velari() -> Command { Command::new(env!("CARGO_BIN_EXE_velari")) }
 fn version_command_reports_current_release() {
     let output = velari().arg("version").output().unwrap();
     assert!(output.status.success());
-    assert_eq!(String::from_utf8_lossy(&output.stdout).trim(), "velari 0.3.4");
+    assert_eq!(String::from_utf8_lossy(&output.stdout).trim(), "velari 0.3.5");
 }
 
 #[test]
@@ -62,4 +62,25 @@ fn check_reports_stable_diagnostic_context() {
     assert!(stderr.contains("error[E3001]"));
     assert!(stderr.contains("variable `missing` used before initialization"));
     assert!(stderr.contains("-->"));
+}
+
+#[test]
+fn system_command_reports_platform() {
+    let output = velari().arg("system").output().unwrap();
+    assert!(output.status.success());
+    let text = String::from_utf8_lossy(&output.stdout);
+    assert!(text.contains("os:"));
+    assert!(text.contains("arch:"));
+}
+
+#[test]
+fn new_project_has_desktop_metadata_and_package_validation() {
+    let dir = tempfile_dir("desktop");
+    let project = dir.join("desktop-app");
+    assert!(velari().args(["new", project.to_str().unwrap()]).output().unwrap().status.success());
+    let manifest = std::fs::read_to_string(project.join("vela.toml")).unwrap();
+    assert!(manifest.contains("[desktop]"));
+    let output = velari().args(["package", project.to_str().unwrap()]).output().unwrap();
+    assert!(output.status.success());
+    assert!(project.join("target/package/manifest.txt").is_file());
 }

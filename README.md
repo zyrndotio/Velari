@@ -38,7 +38,7 @@ The current codebase provides a coherent front-end and interpreter foundation:
 - Lexical scopes, assignments, functions, function calls, and return statements
 - Array and map literals, indexing, and the built-in `length` function
 - Human-readable runtime values and executable `assert` test statements
-- Windows release automation, PowerShell installation, and installation smoke testing
+- Windows release automation and Rust-native installation tooling
 - Desktop project syntax preview and build validation groundwork
 - A cross-platform Rust CLI for checking, running, testing, creating projects, and reporting the version
 
@@ -55,15 +55,15 @@ cargo build --release
 
 The compiled binary is placed at `target/release/velari` on Unix-like systems and `target/release/velari.exe` on Windows.
 
-On Windows PowerShell, a locally built executable is not automatically installed as a global command. Run it from the project directory with:
+On Windows, a locally built executable is not automatically installed as a global command. Run it from the project directory with:
 
-```powershell
+```text
 .\target\release\velari.exe version
 .\target\release\velari.exe check examples\basic.vr
 .\target\release\velari.exe run examples\basic.vr
 ```
 
-To use `velari` directly from any PowerShell window, copy `target\release\velari.exe` into a directory on your `PATH`, or add the release directory to your user `PATH`, then open a new terminal. Rust's `cargo install --path .` is another option; Cargo installs the binary into `%USERPROFILE%\.cargo\bin`, which rustup normally adds to `PATH`.
+To use `velari` directly from any Windows terminal, copy `target\release\velari.exe` into a directory on your `PATH`, or add the release directory to your user `PATH`, then open a new terminal. Rust's `cargo install --path .` is another option; Cargo installs the binary into `%USERPROFILE%\.cargo\bin`, which rustup normally adds to `PATH`.
 
 ## Download a release
 
@@ -72,21 +72,14 @@ Prebuilt source archives and release assets are published on the [GitHub Release
 
 ## Windows installation
 
-The repository includes a PowerShell installer for Windows x86_64 and GitHub Actions workflows for Windows and Linux release artifacts. After cloning the repository, run:
+Download the Windows archive from the [latest GitHub release](https://github.com/zyrndotio/Velari/releases), extract `velari.exe` into a directory on your user PATH, and verify the installation with:
 
-```powershell
-Set-ExecutionPolicy -Scope Process Bypass
-.\scripts\install-velari.ps1
-```
-
-The installer downloads the latest Windows release, installs `velari.exe` under `%USERPROFILE%\.velari\bin`, and adds that directory to the user PATH. Open a new PowerShell window after installation and verify the command:
-
-```powershell
+```text
 velari version
-.\scripts\test-windows-install.ps1
+velari system
 ```
 
-Windows and Linux release builds are produced by GitHub Actions for version tags. The current `build` command validates source and project configuration; standalone native desktop executable generation is the next compiler milestone.
+Windows and Linux release builds are produced by GitHub Actions for version tags. The current `build` command validates source and project configuration. The `package` command creates a validated desktop package manifest; standalone native executable generation remains future backend work.
 
 ## Command-line usage
 
@@ -100,6 +93,8 @@ cargo run -- new hello-world
 cargo run -- check hello-world/src/main.vr
 cargo run -- test hello-world
 cargo run -- build hello-world
+cargo run -- package hello-world
+cargo run -- system
 ```
 
 After installing the release binary, use the same commands without `cargo run --`:
@@ -119,6 +114,9 @@ velari new hello-world
 | `velari new <directory>` | Create a starter project containing `vela.toml`, `src/main.vr`, and a `tests/` directory. |
 | `velari test [project]` | Run every `.vr` file under the project `tests/` directory. |
 | `velari build [project]` | Validate a project for future native compilation; native `.exe` generation is not available yet. |
+| `velari package [project]` | Validate desktop metadata and write a package manifest under `target/package`. |
+| `velari system` | Report the VelaRi version and host platform information. |
+| `velari install` | Copy the current Rust binary into the user VelaRi installation directory. |
 
 ## Language example
 
@@ -238,6 +236,22 @@ Interpreter ──► executable behavior during early development
 
 The interpreter is a development backend, not the final deployment model. The planned native backend will consume the same validated front end and lower VelaRi types to target-specific native representations.
 
+## Desktop projects
+
+Desktop projects now receive an explicit manifest section:
+
+```toml
+[package]
+name = "desktop-app"
+version = "0.1.0"
+entry = "src/main.vr"
+
+[desktop]
+backend = "auto"
+```
+
+The `new` command creates `src`, `tests`, and `assets` directories. The `package` command validates the manifest and writes `target/package/manifest.txt`. This is packaging groundwork, not native executable generation; the future desktop runtime and native backend will consume this metadata.
+
 ## Project discovery and tests
 
 When `check`, `run`, or `test` receives a directory, VelaRi searches that directory and its parents for `vela.toml`. The manifest entry defaults to `src/main.vr` when no `entry` value is present. A generated project includes an empty `tests/` directory so project-level tests can be added immediately.
@@ -253,6 +267,10 @@ my-project/
 ```
 
 Run them with `velari test` from the project directory or with `velari test path/to/project`. Each `.vr` file must parse, pass semantic analysis, and execute successfully. Test files can use `assert condition`; a false assertion fails the test with a non-zero exit status.
+
+## VelaRi 0.3.5 roadmap
+
+VelaRi 0.3.5 is a Rust-only Windows-readiness and desktop-packaging release. It removes scripting-language installation helpers, adds Rust-native installation and platform commands, validates desktop manifest metadata, creates desktop-ready project layouts, and prepares cross-platform release archives. Native window creation and standalone `.exe` generation remain future backend work.
 
 ## Development workflow
 
@@ -318,7 +336,7 @@ Please use GitHub Issues for bugs and feature proposals, and include a minimal V
 
 ## Release status
 
-VelaRi 0.3.4 is a Windows-readiness and desktop-foundation milestone. Collection values currently use runtime representations and will receive explicit generic types and native backend mappings in a future release.
+VelaRi 0.3.5 is a Rust-only Windows-readiness and desktop-packaging milestone. Collection values currently use runtime representations and will receive explicit generic types and native backend mappings in a future release.
 
 ## License
 

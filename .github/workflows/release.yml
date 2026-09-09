@@ -38,15 +38,16 @@ jobs:
           tar -czf "${{ matrix.archive }}" -C staging .
       - name: Package Windows
         if: runner.os == 'Windows'
-        shell: pwsh
+        shell: bash
         run: |
-          New-Item -ItemType Directory -Force staging | Out-Null
-          Copy-Item "${{ matrix.binary }}" staging/velari.exe
-          Copy-Item README.md,LICENSE,NOTICE staging/
-          Compress-Archive -Path staging/* -DestinationPath "${{ matrix.archive }}" -Force
+          mkdir -p staging
+          cp "${{ matrix.binary }}" staging/velari.exe
+          cp README.md LICENSE NOTICE staging/
+          7z a "${{ matrix.archive }}" ./staging/*
       - name: Checksum
         shell: bash
-        run: sha256sum "${{ matrix.archive }}" > "${{ matrix.archive }}.sha256"
+        run: |
+          if command -v sha256sum >/dev/null 2>&1; then sha256sum "${{ matrix.archive }}" > "${{ matrix.archive }}.sha256"; else shasum -a 256 "${{ matrix.archive }}" > "${{ matrix.archive }}.sha256"; fi
       - name: Upload release assets
         env:
           GH_TOKEN: ${{ github.token }}
