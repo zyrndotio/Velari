@@ -69,19 +69,19 @@ To use `velari` directly from any Windows terminal, copy `target\release\velari.
 
 ## Download a release
 
-Prebuilt source archives and release assets are published on the [GitHub Releases page](https://github.com/zyrndotio/Velari/releases). The source archive can also be built on any supported Rust host with the commands above. Release archives include a SHA-256 checksum file.
+Prebuilt installers and portable release assets are published on the [GitHub Releases page](https://github.com/zyrndotio/Velari/releases). Stable and beta releases provide a Windows `Velari-Setup.exe` installer, Linux `.deb` and `.AppImage` packages, and a macOS `.dmg` package when the corresponding platform workflow succeeds. Portable Linux and Windows archives remain available as fallback downloads, and every release asset includes a SHA-256 checksum.
 
 
 ## Windows installation
 
-Download the Windows archive from the [latest GitHub release](https://github.com/zyrndotio/Velari/releases), extract `velari.exe` into a directory on your user PATH, and verify the installation with:
+Download `Velari-Setup.exe` from the [latest GitHub release](https://github.com/zyrndotio/Velari/releases) to install VelaRi on Windows. The setup program installs the compiler for the user and creates the application entry points provided by the installer. Verify the installation with:
 
 ```text
 velari version
 velari system
 ```
 
-Windows and Linux release builds are produced by GitHub Actions for version tags. The current `build` command validates source and project configuration. The `package` command creates a validated desktop package manifest; standalone native executable generation remains future backend work.
+Windows, Linux, and macOS release installers are produced by GitHub Actions for version tags. The current `build` command validates source and project configuration. The `package` command creates a validated desktop package manifest; standalone native executable generation remains future backend work.
 
 ## Command-line usage
 

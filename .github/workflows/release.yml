@@ -7,8 +7,12 @@ on:
 permissions:
   contents: write
 
+env:
+  CARGO_TERM_COLOR: always
+
 jobs:
-  release:
+  portable:
+    name: Portable ${{ matrix.os }}
     strategy:
       matrix:
         include:
@@ -28,7 +32,7 @@ jobs:
           targets: ${{ matrix.target }}
       - run: cargo test --all-targets
       - run: cargo build --release --target ${{ matrix.target }}
-      - name: Package Unix
+      - name: Package Unix archive
         if: runner.os != 'Windows'
         shell: bash
         run: |
@@ -36,7 +40,7 @@ jobs:
           cp "${{ matrix.binary }}" staging/velari
           cp README.md LICENSE NOTICE staging/
           tar -czf "${{ matrix.archive }}" -C staging .
-      - name: Package Windows
+      - name: Package Windows archive
         if: runner.os == 'Windows'
         shell: bash
         run: |
@@ -44,11 +48,10 @@ jobs:
           cp "${{ matrix.binary }}" staging/velari.exe
           cp README.md LICENSE NOTICE staging/
           7z a "${{ matrix.archive }}" ./staging/*
-      - name: Checksum
+      - name: Create checksum
         shell: bash
-        run: |
-          if command -v sha256sum >/dev/null 2>&1; then sha256sum "${{ matrix.archive }}" > "${{ matrix.archive }}.sha256"; else shasum -a 256 "${{ matrix.archive }}" > "${{ matrix.archive }}.sha256"; fi
-      - name: Upload release assets
+        run: sha256sum "${{ matrix.archive }}" > "${{ matrix.archive }}.sha256"
+      - name: Upload portable assets
         env:
           GH_TOKEN: ${{ github.token }}
         shell: bash
@@ -56,6 +59,80 @@ jobs:
           if [[ "$GITHUB_REF_NAME" == *-* ]]; then
             gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1 || gh release create "$GITHUB_REF_NAME" --title "VelaRi $GITHUB_REF_NAME" --prerelease --notes "VelaRi beta release. Please report regressions before the stable release."
           else
-            gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1 || gh release create "$GITHUB_REF_NAME" --title "VelaRi $GITHUB_REF_NAME" --notes "Automated VelaRi release assets."
+            gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1 || gh release create "$GITHUB_REF_NAME" --title "VelaRi $GITHUB_REF_NAME" --notes "VelaRi release assets."
           fi
           gh release upload "$GITHUB_REF_NAME" "${{ matrix.archive }}" "${{ matrix.archive }}.sha256" --clobber
+
+  installers:
+    name: Installer ${{ matrix.name }}
+    needs: portable
+    strategy:
+      matrix:
+        include:
+          - name: Windows NSIS
+            os: windows-latest
+            format: nsis
+            output_dir: target/release/packager/nsis
+            rename: Velari-Setup.exe
+          - name: Linux Debian
+            os: ubuntu-latest
+            format: deb
+            output_dir: target/release/packager/deb
+            rename: ""
+          - name: Linux AppImage
+            os: ubuntu-latest
+            format: appimage
+            output_dir: target/release/packager/appimage
+            rename: ""
+          - name: macOS DMG
+            os: macos-latest
+            format: dmg
+            output_dir: target/release/packager/dmg
+            rename: ""
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+      - name: Install Linux packaging tools
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y dpkg fuse3 libfuse2
+      - name: Install cargo-packager
+        run: cargo install cargo-packager --locked
+      - name: Build installer
+        shell: bash
+        run: cargo packager --release --formats "${{ matrix.format }}"
+      - name: Normalize Windows installer name
+        if: runner.os == 'Windows'
+        shell: bash
+        run: |
+          installer=$(find "${{ matrix.output_dir }}" -maxdepth 1 -type f -iname '*.exe' | head -1)
+          test -n "$installer"
+          cp "$installer" Velari-Setup.exe
+      - name: Stage installer files
+        if: runner.os != 'Windows'
+        shell: bash
+        run: |
+          mkdir -p staging
+          find "${{ matrix.output_dir }}" -maxdepth 1 -type f -exec cp {} staging/ \;
+      - name: Create installer checksums
+        shell: bash
+        run: |
+          if [[ "${{ runner.os }}" == "Windows" ]]; then
+            sha256sum Velari-Setup.exe > Velari-Setup.exe.sha256
+          else
+            sha256sum staging/* > installer-checksums.sha256
+          fi
+      - name: Upload installer assets
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          if [[ "${{ runner.os }}" == "Windows" ]]; then
+            gh release upload "$GITHUB_REF_NAME" Velari-Setup.exe Velari-Setup.exe.sha256 --clobber
+          else
+            gh release upload "$GITHUB_REF_NAME" staging/* installer-checksums.sha256 --clobber
+          fi
