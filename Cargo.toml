@@ -1,16 +1,18 @@
 [package]
 name = "velari"
-version = "0.4.3"
+version = "0.4.4-beta.1"
 edition = "2021"
-author = "zyrndotio"
+authors = ["zyrndotio"]
 description = "Velari language compiler and interpreter"
+license = "Apache-2.0"
+repository = "https://github.com/zyrndotio/Velari"
 
 [dependencies]
 
 [package.metadata.packager]
 product-name = "Velari"
 identifier = "com.zyrndotio.velari"
-version = "0.4.3"
+version = "0.4.4-beta.1"
 # Tells the packager to build the optimized release binary right before bundling
 before-packaging-command = "cargo build --release"
 

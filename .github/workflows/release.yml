@@ -12,43 +12,50 @@ jobs:
     strategy:
       matrix:
         include:
-          - os: windows-latest
-            format: nsis
-            artifact_path: target/release/packager/nsis/*.exe
           - os: ubuntu-latest
-            format: deb,appimage
-            artifact_path: target/release/packager/deb/*.deb,target/release/packager/appimage/*.AppImage
-          - os: macos-latest
-            format: dmg
-            artifact_path: target/release/packager/dmg/*.dmg
-
+            target: x86_64-unknown-linux-gnu
+            archive: velari-linux-x86_64.tar.gz
+            binary: target/x86_64-unknown-linux-gnu/release/velari
+          - os: windows-latest
+            target: x86_64-pc-windows-msvc
+            archive: velari-windows-x86_64.zip
+            binary: target/x86_64-pc-windows-msvc/release/velari.exe
     runs-on: ${{ matrix.os }}
-
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Install Rust
-        uses: dtolnay/rust-toolchain@stable
-
-      # Linux requires specific packaging tools depending on the format
-      - name: Install Linux Packaging Tools
-        if: matrix.os == 'ubuntu-latest'
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y dpkg build-essential
-
-      - name: Install cargo-packager
-        run: cargo install cargo-packager --locked
-
-      # cargo-packager natively compiles and builds the installer bundle
-      - name: Build Installer Package
-        run: cargo packager --release --formats ${{ matrix.format }}
-
-      # Automatically uploads the generated installer to your GitHub Release
-      - name: Upload Installer to GitHub Release
-        uses: softprops/action-gh-release@v2
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
         with:
-          files: ${{ matrix.artifact_path }}
+          targets: ${{ matrix.target }}
+      - run: cargo test --all-targets
+      - run: cargo build --release --target ${{ matrix.target }}
+      - name: Package Unix
+        if: runner.os != 'Windows'
+        shell: bash
+        run: |
+          mkdir -p staging
+          cp "${{ matrix.binary }}" staging/velari
+          cp README.md LICENSE NOTICE staging/
+          tar -czf "${{ matrix.archive }}" -C staging .
+      - name: Package Windows
+        if: runner.os == 'Windows'
+        shell: bash
+        run: |
+          mkdir -p staging
+          cp "${{ matrix.binary }}" staging/velari.exe
+          cp README.md LICENSE NOTICE staging/
+          7z a "${{ matrix.archive }}" ./staging/*
+      - name: Checksum
+        shell: bash
+        run: |
+          if command -v sha256sum >/dev/null 2>&1; then sha256sum "${{ matrix.archive }}" > "${{ matrix.archive }}.sha256"; else shasum -a 256 "${{ matrix.archive }}" > "${{ matrix.archive }}.sha256"; fi
+      - name: Upload release assets
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          if [[ "$GITHUB_REF_NAME" == *-* ]]; then
+            gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1 || gh release create "$GITHUB_REF_NAME" --title "VelaRi $GITHUB_REF_NAME" --prerelease --notes "VelaRi beta release. Please report regressions before the stable release."
+          else
+            gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1 || gh release create "$GITHUB_REF_NAME" --title "VelaRi $GITHUB_REF_NAME" --notes "Automated VelaRi release assets."
+          fi
+          gh release upload "$GITHUB_REF_NAME" "${{ matrix.archive }}" "${{ matrix.archive }}.sha256" --clobber

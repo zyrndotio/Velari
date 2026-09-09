@@ -182,7 +182,7 @@ Supported expression operators, from lower to higher precedence, are:
 
 ## Explicit types and IR
 
-VelaRi 0.4.3 accepts explicit primitive and collection annotations:
+VelaRi 0.4.4-beta.1 accepts explicit primitive and collection annotations:
 
 ```velari
 begin
@@ -295,6 +295,12 @@ VelaRi 0.4.2 is a distribution and tooling milestone. It adds safer replacement 
 
 The installer copies the running binary to `~/.velari/bin/velari` on Unix-like systems and `%USERPROFILE%\\.velari\\velari.exe` on Windows. The destination directory must be on `PATH` for the `velari` command to be available globally. The command reports the path after installation rather than changing shell startup files automatically.
 
+## VelaRi 0.4.4 beta
+
+The 0.4.4 beta is a packaging and release-readiness milestone built on the 0.4.3 semantic typing foundation. It includes packager metadata for the VelaRi product identifier, installer-oriented release configuration, and the audited issue record in `ISSUES.md`. The beta is not yet the native application backend; the compiler still executes programs through the validated tree-walking interpreter.
+
+The beta release is published as a prerelease so the Linux and Windows binaries can be tested before a stable 0.4.4 release. Installers and additional desktop packaging formats will be enabled only after their CI builds are verified on the corresponding operating systems.
+
 ## Next release: VelaRi 0.5.0
 
 The next feature milestone should stabilize the compiler boundary before native code generation. Planned work includes richer collection typing in semantic analysis, explicit function signatures in the front end, complete IR control-flow validation, deterministic project manifests, and a first executable backend prototype. Native `.exe` generation should follow those foundations rather than being added directly to the current interpreter-oriented package command.
@@ -364,7 +370,7 @@ Please use GitHub Issues for bugs and feature proposals, and include a minimal V
 
 ## Release status
 
-VelaRi 0.4.3 is the semantic typing milestone. Collection element and map value types now propagate through semantic analysis, function calls validate annotated parameters, and return values are checked against annotated function results. The typed interpreter and backend-neutral IR remain the current execution foundation; native executable generation is planned for the 0.5.x line.
+VelaRi 0.4.4-beta.1 is the beta packaging and release-readiness milestone. VelaRi 0.4.3 remains the semantic typing foundation: collection element and map value types propagate through semantic analysis, function calls validate annotated parameters, and return values are checked against annotated function results. The typed interpreter and backend-neutral IR remain the current execution foundation; native executable generation is planned for the 0.5.x line.
 
 ## License
 
