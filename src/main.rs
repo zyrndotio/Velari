@@ -15,6 +15,18 @@ use std::{
     io::Write,
     path::{Path, PathBuf},
 };
+const VERSION: &str = "0.4.2";
+
+fn install_path() -> Result<PathBuf, String> {
+    let home = env::var_os("HOME")
+        .or_else(|| env::var_os("USERPROFILE"))
+        .ok_or("could not determine home directory")?;
+    Ok(PathBuf::from(home).join(".velari").join(if cfg!(windows) {
+        "velari.exe"
+    } else {
+        "bin/velari"
+    }))
+}
 fn compile(source: &str, filename: &str, run: bool) -> Result<(), String> {
     let tokens = Lexer::new(source).tokenize().map_err(|es| {
         es.into_iter()
@@ -173,23 +185,32 @@ fn run_tests(root: &Path) -> Result<(), String> {
 }
 fn install() -> Result<(), String> {
     let exe = env::current_exe().map_err(|e| e.to_string())?;
-    let home = env::var_os("HOME")
-        .or_else(|| env::var_os("USERPROFILE"))
-        .ok_or("could not determine home directory")?;
-    let dest = PathBuf::from(home).join(".velari").join(if cfg!(windows) {
-        "velari.exe"
-    } else {
-        "bin/velari"
-    });
+    let dest = install_path()?;
     if let Some(parent) = dest.parent() {
         fs::create_dir_all(parent).map_err(|e| e.to_string())?
     }
-    fs::copy(exe, &dest).map_err(|e| e.to_string())?;
+    let temporary = dest.with_extension("installing");
+    fs::copy(exe, &temporary).map_err(|e| e.to_string())?;
+    fs::rename(&temporary, &dest).map_err(|e| e.to_string())?;
     println!("installed VelaRi to {}", dest.display());
     println!(
         "add {} to your user PATH to run `velari` globally",
         dest.parent().unwrap_or(Path::new(".")).display()
     );
+    Ok(())
+}
+fn uninstall() -> Result<(), String> {
+    let dest = install_path()?;
+    if dest.is_file() {
+        fs::remove_file(&dest).map_err(|e| e.to_string())?;
+        println!("uninstalled VelaRi from {}", dest.display());
+    } else {
+        println!("VelaRi is not installed at {}", dest.display());
+    }
+    Ok(())
+}
+fn where_installed() -> Result<(), String> {
+    println!("{}", install_path()?.display());
     Ok(())
 }
 fn package(root: &Path) -> Result<(), String> {
@@ -212,14 +233,14 @@ status=validated; native executable generation is planned for a future release",
     Ok(())
 }
 fn usage() {
-    eprintln!("VelaRi 0.4.1\nusage: velari <check|run|test|build|package|ir|install|system|new|version> [file|project]");
+    eprintln!("VelaRi {VERSION}\nusage: velari <check|run|test|build|package|ir|install|uninstall|where|system|new|version> [file|project]");
 }
 fn main() {
     let mut args = env::args().skip(1);
     let command = args.next();
     let result = match command.as_deref() {
         Some("version") => {
-            println!("velari 0.4.1");
+            println!("velari {VERSION}");
             Ok(())
         }
         Some("ir") => {
@@ -237,13 +258,15 @@ fn main() {
             })
         }
         Some("system") => {
-            println!("VelaRi 0.4.1");
+            println!("VelaRi {VERSION}");
             println!("os: {}", env::consts::OS);
             println!("arch: {}", env::consts::ARCH);
             println!("family: {}", env::consts::FAMILY);
             Ok(())
         }
         Some("install") => install(),
+        Some("uninstall") => uninstall(),
+        Some("where") => where_installed(),
         Some("package") => project_root(args.next()).and_then(|r| package(&r)),
         Some("check") | Some("run") | Some("build") => {
             let run = command.as_deref() == Some("run");

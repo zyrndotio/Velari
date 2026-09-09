@@ -10,7 +10,7 @@ fn version_command_reports_current_release() {
     assert!(output.status.success());
     assert_eq!(
         String::from_utf8_lossy(&output.stdout).trim(),
-        "velari 0.4.1"
+        "velari 0.4.2"
     );
 }
 
@@ -133,4 +133,13 @@ fn typed_declaration_and_ir_command_work() {
         .unwrap();
     assert!(ir.status.success());
     assert!(String::from_utf8_lossy(&ir.stdout).contains("function main"));
+}
+
+#[test]
+fn where_command_reports_user_installation_path() {
+    let output = velari().arg("where").output().unwrap();
+    assert!(output.status.success());
+    let path = String::from_utf8_lossy(&output.stdout);
+    assert!(path.contains(".velari"));
+    assert!(path.trim_end().ends_with("velari") || path.trim_end().ends_with("velari.exe"));
 }

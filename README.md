@@ -119,7 +119,9 @@ velari new hello-world
 | `velari build [project]` | Validate a project for future native compilation; native `.exe` generation is not available yet. |
 | `velari package [project]` | Validate desktop metadata and write a package manifest under `target/package`. |
 | `velari system` | Report the VelaRi version and host platform information. |
-| `velari install` | Copy the current Rust binary into the user VelaRi installation directory. |
+| `velari install` | Atomically install or replace the current binary in the user VelaRi installation directory. |
+| `velari where` | Print the expected user installation path. |
+| `velari uninstall` | Remove the user-installed VelaRi binary if it exists. |
 
 ## Language example
 
@@ -180,7 +182,7 @@ Supported expression operators, from lower to higher precedence, are:
 
 ## Explicit types and IR
 
-VelaRi 0.4.0 accepts explicit primitive and collection annotations:
+VelaRi 0.4.2 accepts explicit primitive and collection annotations:
 
 ```velari
 begin
@@ -287,9 +289,15 @@ my-project/
 
 Run them with `velari test` from the project directory or with `velari test path/to/project`. Each `.vr` file must parse, pass semantic analysis, and execute successfully. Test files can use `assert condition`; a false assertion fails the test with a non-zero exit status.
 
-## VelaRi 0.4.0 roadmap
+## VelaRi 0.4.2 release
 
-VelaRi 0.4.0 introduces explicit primitive and collection type syntax, typed function signature fields, and a backend-neutral IR inspection command. Native window creation and standalone `.exe` generation remain future backend work.
+VelaRi 0.4.2 is a distribution and tooling milestone. It adds safer replacement during `velari install`, plus `velari where` and `velari uninstall` so local installations can be inspected and removed without manually editing the installation directory. Release archives are built by GitHub Actions for Linux x86_64 and Windows x86_64 tags.
+
+The installer copies the running binary to `~/.velari/bin/velari` on Unix-like systems and `%USERPROFILE%\\.velari\\velari.exe` on Windows. The destination directory must be on `PATH` for the `velari` command to be available globally. The command reports the path after installation rather than changing shell startup files automatically.
+
+## Next release: VelaRi 0.5.0
+
+The next feature milestone should stabilize the compiler boundary before native code generation. Planned work includes richer collection typing in semantic analysis, explicit function signatures in the front end, complete IR control-flow validation, deterministic project manifests, and a first executable backend prototype. Native `.exe` generation should follow those foundations rather than being added directly to the current interpreter-oriented package command.
 
 ## Development workflow
 
@@ -332,6 +340,7 @@ When adding language behavior, include a focused regression test and update the 
 - Fully load and validate `vela.toml` manifests
 - Add `build`, `test`, `fmt`, `clean`, and dependency commands
 - Add package and standard-library management
+- Add installer discovery, uninstall support, and signed release artifacts
 - Provide editor integration, formatting, and language-server support
 
 ### Runtime and desktop platform
@@ -355,7 +364,7 @@ Please use GitHub Issues for bugs and feature proposals, and include a minimal V
 
 ## Release status
 
-VelaRi 0.4.0 is the typed compiler foundation milestone. Collection values currently use runtime representations and will receive explicit generic types and native backend mappings in a future release.
+VelaRi 0.4.2 is the distribution and tooling milestone. The typed interpreter and backend-neutral IR remain the current execution foundation; native executable generation is planned for the 0.5.x line.
 
 ## License
 
