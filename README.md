@@ -38,6 +38,8 @@ The current codebase provides a coherent front-end and interpreter foundation:
 - Lexical scopes, assignments, functions, function calls, and return statements
 - Array and map literals, indexing, and the built-in `length` function
 - Human-readable runtime values and executable `assert` test statements
+- Explicit type annotations for primitives and generic collection types
+- Typed intermediate representation inspection with `velari ir`
 - Windows release automation and Rust-native installation tooling
 - Desktop project syntax preview and build validation groundwork
 - A cross-platform Rust CLI for checking, running, testing, creating projects, and reporting the version
@@ -95,6 +97,7 @@ cargo run -- test hello-world
 cargo run -- build hello-world
 cargo run -- package hello-world
 cargo run -- system
+cargo run -- ir examples/typed.vr
 ```
 
 After installing the release binary, use the same commands without `cargo run --`:
@@ -175,6 +178,20 @@ Supported expression operators, from lower to higher precedence, are:
 | 5 | `*`, `/` | Multiplication and division |
 | unary | `-` | Numeric negation |
 
+## Explicit types and IR
+
+VelaRi 0.4.0 accepts explicit primitive and collection annotations:
+
+```velari
+begin
+    let count: Int be 3
+    let label: String be "VelaRi"
+    let values: Array<Int> be [1, 2, 3]
+end
+```
+
+Function parameters and return values can also be annotated. The compiler validates declarations before execution and rejects incompatible initializers. Use `velari ir <file>` to inspect the current typed intermediate representation, which is the foundation for future native backends.
+
 ## Collections
 
 Arrays and maps are available in the interpreter:
@@ -203,6 +220,8 @@ Arrays use numeric indexes and maps use string keys. Out-of-bounds indexes and m
 ├── examples/
 │   ├── desktop/main.vr  # Desktop syntax preview
 │   ├── basic.vr        # End-to-end language example
+│   ├── typed.vr        # Explicit type annotations
+│   └── typed-functions.vr # Typed function signatures
 │   └── functions.vr    # Functions and return values
 └── src/
     ├── ast.rs          # Typed abstract syntax tree
@@ -268,9 +287,9 @@ my-project/
 
 Run them with `velari test` from the project directory or with `velari test path/to/project`. Each `.vr` file must parse, pass semantic analysis, and execute successfully. Test files can use `assert condition`; a false assertion fails the test with a non-zero exit status.
 
-## VelaRi 0.3.5 roadmap
+## VelaRi 0.4.0 roadmap
 
-VelaRi 0.3.5 is a Rust-only Windows-readiness and desktop-packaging release. It removes scripting-language installation helpers, adds Rust-native installation and platform commands, validates desktop manifest metadata, creates desktop-ready project layouts, and prepares cross-platform release archives. Native window creation and standalone `.exe` generation remain future backend work.
+VelaRi 0.4.0 introduces explicit primitive and collection type syntax, typed function signature fields, and a backend-neutral IR inspection command. Native window creation and standalone `.exe` generation remain future backend work.
 
 ## Development workflow
 
@@ -336,7 +355,7 @@ Please use GitHub Issues for bugs and feature proposals, and include a minimal V
 
 ## Release status
 
-VelaRi 0.3.5 is a Rust-only Windows-readiness and desktop-packaging milestone. Collection values currently use runtime representations and will receive explicit generic types and native backend mappings in a future release.
+VelaRi 0.4.0 is the typed compiler foundation milestone. Collection values currently use runtime representations and will receive explicit generic types and native backend mappings in a future release.
 
 ## License
 

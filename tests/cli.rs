@@ -6,7 +6,7 @@ fn velari() -> Command { Command::new(env!("CARGO_BIN_EXE_velari")) }
 fn version_command_reports_current_release() {
     let output = velari().arg("version").output().unwrap();
     assert!(output.status.success());
-    assert_eq!(String::from_utf8_lossy(&output.stdout).trim(), "velari 0.3.5");
+    assert_eq!(String::from_utf8_lossy(&output.stdout).trim(), "velari 0.4.0");
 }
 
 #[test]
@@ -83,4 +83,16 @@ fn new_project_has_desktop_metadata_and_package_validation() {
     let output = velari().args(["package", project.to_str().unwrap()]).output().unwrap();
     assert!(output.status.success());
     assert!(project.join("target/package/manifest.txt").is_file());
+}
+
+#[test]
+fn typed_declaration_and_ir_command_work() {
+    let dir = tempfile_dir("typed");
+    let file = dir.join("typed.vr");
+    std::fs::write(&file, "begin\n let count: Int be 3\n print count\nend\n").unwrap();
+    let checked = velari().args(["check", file.to_str().unwrap()]).output().unwrap();
+    assert!(checked.status.success());
+    let ir = velari().args(["ir", file.to_str().unwrap()]).output().unwrap();
+    assert!(ir.status.success());
+    assert!(String::from_utf8_lossy(&ir.stdout).contains("function main"));
 }

@@ -1,0 +1,8 @@
+begin
+    let count: Int be 3
+    let label: String be "VelaRi 0.4"
+    let values: Array<Int> be [1, 2, 3]
+    print label
+    print count
+    print length(values)
+end

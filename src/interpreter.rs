@@ -6,7 +6,7 @@ pub struct Interpreter { scopes: Vec<HashMap<String,Value>>, functions: HashMap<
 impl Interpreter {
  pub fn new()->Self{Self{scopes:vec![HashMap::new()],functions:HashMap::new()}}
  pub fn execute(&mut self,s:&Stmt)->Result<(),RuntimeError>{self.collect(s);match self.exec(s)?{Flow::Continue=>Ok(()),Flow::Return(_)=>Err(RuntimeError("return outside function".into()))}}
- fn collect(&mut self,s:&Stmt){match s{Stmt::Block(xs)=>for x in xs{self.collect(x)},Stmt::Function{name,parameters,body,..}=>{self.functions.insert(name.clone(),(parameters.clone(),body.clone()));},_=>{}}}
+ fn collect(&mut self,s:&Stmt){match s{Stmt::Block(xs)=>for x in xs{self.collect(x)},Stmt::Function{name,parameters,body,..}=>{self.functions.insert(name.clone(),(parameters.iter().map(|(n,_)|n.clone()).collect(),body.clone()));},_=>{}}}
  fn push(&mut self){self.scopes.push(HashMap::new())}fn pop(&mut self){self.scopes.pop();}
  fn lookup(&self,n:&str)->Option<Value>{self.scopes.iter().rev().find_map(|s|s.get(n).cloned())}
  fn define(&mut self,n:String,v:Value){self.scopes.last_mut().unwrap().insert(n,v);}
