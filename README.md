@@ -50,6 +50,16 @@ cargo build --release
 
 The compiled binary is placed at `target/release/velari` on Unix-like systems and `target/release/velari.exe` on Windows.
 
+On Windows PowerShell, a locally built executable is not automatically installed as a global command. Run it from the project directory with:
+
+```powershell
+.\target\release\velari.exe version
+.\target\release\velari.exe check examples\basic.vr
+.\target\release\velari.exe run examples\basic.vr
+```
+
+To use `velari` directly from any PowerShell window, copy `target\release\velari.exe` into a directory on your `PATH`, or add the release directory to your user `PATH`, then open a new terminal. Rust's `cargo install --path .` is another option; Cargo installs the binary into `%USERPROFILE%\.cargo\bin`, which rustup normally adds to `PATH`.
+
 ## Download a release
 
 Prebuilt source archives and release assets are published on the [GitHub Releases page](https://github.com/zyrndotio/Velari/releases). The source archive can also be built on any supported Rust host with the commands above.
