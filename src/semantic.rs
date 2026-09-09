@@ -1,26 +1,31 @@
-use crate::{
-    ast::{Expr, Op, Stmt, Value},
-    lexer::Span,
-};
 use std::collections::HashMap;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+use crate::{
+    ast::{Expr, Op, Stmt, Type, Value},
+    lexer::Span,
+};
+
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum VelaRiType {
     Int,
     Number,
     Boolean,
     String,
     Null,
+    Array(Box<VelaRiType>),
+    Map(Box<VelaRiType>, Box<VelaRiType>),
     Unknown,
 }
+
 #[derive(Debug, Clone, PartialEq)]
 pub struct SemanticError {
     pub message: String,
     pub span: Span,
 }
+
 #[derive(Clone)]
 struct FunctionSig {
-    parameters: usize,
+    parameters: Vec<VelaRiType>,
     result: VelaRiType,
 }
 
@@ -28,50 +33,94 @@ pub struct SemanticAnalyzer {
     scopes: Vec<HashMap<String, VelaRiType>>,
     functions: HashMap<String, FunctionSig>,
     in_function: bool,
+    return_type: Option<VelaRiType>,
 }
-fn type_from_ast(t: &crate::ast::Type) -> VelaRiType {
-    match t {
-        crate::ast::Type::Int => VelaRiType::Int,
-        crate::ast::Type::Float => VelaRiType::Number,
-        crate::ast::Type::Bool => VelaRiType::Boolean,
-        crate::ast::Type::String => VelaRiType::String,
-        crate::ast::Type::Null => VelaRiType::Null,
+
+fn type_from_ast(ty: &Type) -> VelaRiType {
+    match ty {
+        Type::Int => VelaRiType::Int,
+        Type::Float => VelaRiType::Number,
+        Type::Bool => VelaRiType::Boolean,
+        Type::String => VelaRiType::String,
+        Type::Null => VelaRiType::Null,
+        Type::Array(element) => VelaRiType::Array(Box::new(type_from_ast(element))),
+        Type::Map(key, value) => {
+            VelaRiType::Map(Box::new(type_from_ast(key)), Box::new(type_from_ast(value)))
+        }
+        Type::Unknown => VelaRiType::Unknown,
+    }
+}
+
+fn type_name(ty: &VelaRiType) -> String {
+    match ty {
+        VelaRiType::Int => "Int".into(),
+        VelaRiType::Number => "Float".into(),
+        VelaRiType::Boolean => "Boolean".into(),
+        VelaRiType::String => "String".into(),
+        VelaRiType::Null => "Null".into(),
+        VelaRiType::Array(element) => format!("Array<{}>", type_name(element)),
+        VelaRiType::Map(key, value) => format!("Map<{}, {}>", type_name(key), type_name(value)),
+        VelaRiType::Unknown => "Unknown".into(),
+    }
+}
+
+fn compatible(expected: &VelaRiType, actual: &VelaRiType) -> bool {
+    expected == &VelaRiType::Unknown
+        || actual == &VelaRiType::Unknown
+        || expected == actual
+        || matches!((expected, actual), (VelaRiType::Number, VelaRiType::Int))
+}
+
+fn merge_types(left: &VelaRiType, right: &VelaRiType) -> VelaRiType {
+    if left == &VelaRiType::Unknown {
+        return right.clone();
+    }
+    if right == &VelaRiType::Unknown || left == right {
+        return left.clone();
+    }
+    match (left, right) {
+        (VelaRiType::Int, VelaRiType::Number) | (VelaRiType::Number, VelaRiType::Int) => {
+            VelaRiType::Number
+        }
+        (VelaRiType::Array(left), VelaRiType::Array(right)) => {
+            VelaRiType::Array(Box::new(merge_types(left, right)))
+        }
+        (VelaRiType::Map(left_key, left_value), VelaRiType::Map(right_key, right_value)) => {
+            VelaRiType::Map(
+                Box::new(merge_types(left_key, right_key)),
+                Box::new(merge_types(left_value, right_value)),
+            )
+        }
         _ => VelaRiType::Unknown,
     }
 }
-fn expected_name(t: VelaRiType) -> &'static str {
-    match t {
-        VelaRiType::Int => "Int",
-        VelaRiType::Number => "Float",
-        VelaRiType::Boolean => "Boolean",
-        VelaRiType::String => "String",
-        VelaRiType::Null => "Null",
-        VelaRiType::Unknown => "Unknown",
-    }
-}
+
 impl SemanticAnalyzer {
     pub fn new() -> Self {
         Self {
             scopes: vec![HashMap::new()],
             functions: HashMap::new(),
             in_function: false,
+            return_type: None,
         }
     }
+
     pub fn analyze(&mut self, root: &Stmt) -> Result<(), Vec<SemanticError>> {
-        let mut e = Vec::new();
+        let mut errors = Vec::new();
         self.collect_functions(root);
-        self.stmt(root, &mut e);
-        if e.is_empty() {
+        self.stmt(root, &mut errors);
+        if errors.is_empty() {
             Ok(())
         } else {
-            Err(e)
+            Err(errors)
         }
     }
-    fn collect_functions(&mut self, s: &Stmt) {
-        match s {
-            Stmt::Block(xs) => {
-                for x in xs {
-                    self.collect_functions(x)
+
+    fn collect_functions(&mut self, statement: &Stmt) {
+        match statement {
+            Stmt::Block(statements) => {
+                for statement in statements {
+                    self.collect_functions(statement);
                 }
             }
             Stmt::Function {
@@ -83,7 +132,14 @@ impl SemanticAnalyzer {
                 self.functions.insert(
                     name.clone(),
                     FunctionSig {
-                        parameters: parameters.len(),
+                        parameters: parameters
+                            .iter()
+                            .map(|(_, ty)| {
+                                ty.as_ref()
+                                    .map(type_from_ast)
+                                    .unwrap_or(VelaRiType::Unknown)
+                            })
+                            .collect(),
                         result: return_type
                             .as_ref()
                             .map(type_from_ast)
@@ -94,23 +150,50 @@ impl SemanticAnalyzer {
             _ => {}
         }
     }
+
     fn push(&mut self) {
-        self.scopes.push(HashMap::new())
+        self.scopes.push(HashMap::new());
     }
+
     fn pop(&mut self) {
         self.scopes.pop();
     }
-    fn define(&mut self, n: String, t: VelaRiType) {
-        self.scopes.last_mut().unwrap().insert(n, t);
+
+    fn define(&mut self, name: String, ty: VelaRiType) {
+        self.scopes.last_mut().unwrap().insert(name, ty);
     }
-    fn lookup(&self, n: &str) -> Option<VelaRiType> {
-        self.scopes.iter().rev().find_map(|s| s.get(n).copied())
+
+    fn lookup(&self, name: &str) -> Option<VelaRiType> {
+        self.scopes
+            .iter()
+            .rev()
+            .find_map(|scope| scope.get(name).cloned())
     }
-    fn stmt(&mut self, s: &Stmt, e: &mut Vec<SemanticError>) {
-        match s {
-            Stmt::Block(xs) => {
-                for x in xs {
-                    self.stmt(x, e)
+
+    fn report_mismatch(
+        &self,
+        expected: &VelaRiType,
+        actual: &VelaRiType,
+        span: Span,
+        errors: &mut Vec<SemanticError>,
+    ) {
+        if !compatible(expected, actual) {
+            errors.push(SemanticError {
+                message: format!(
+                    "type mismatch: expected {}, found {}",
+                    type_name(expected),
+                    type_name(actual)
+                ),
+                span,
+            });
+        }
+    }
+
+    fn stmt(&mut self, statement: &Stmt, errors: &mut Vec<SemanticError>) {
+        match statement {
+            Stmt::Block(statements) => {
+                for statement in statements {
+                    self.stmt(statement, errors);
                 }
             }
             Stmt::Let {
@@ -119,103 +202,94 @@ impl SemanticAnalyzer {
                 value,
                 span,
             } => {
-                if let Ok(t) = self.expr(value, e) {
-                    if let Some(expected) = annotation {
-                        let expected = match expected {
-                            crate::ast::Type::Int => VelaRiType::Int,
-                            crate::ast::Type::Float => VelaRiType::Number,
-                            crate::ast::Type::Bool => VelaRiType::Boolean,
-                            crate::ast::Type::String => VelaRiType::String,
-                            crate::ast::Type::Null => VelaRiType::Null,
-                            _ => VelaRiType::Unknown,
-                        };
-                        if expected != VelaRiType::Unknown && t != expected {
-                            e.push(SemanticError {
-                                message: format!(
-                                    "type mismatch: expected {}, found {:?}",
-                                    expected_name(expected),
-                                    t
-                                ),
-                                span: *span,
-                            });
-                        }
+                if let Ok(actual) = self.expr(value, errors) {
+                    if let Some(annotation) = annotation {
+                        self.report_mismatch(&type_from_ast(annotation), &actual, *span, errors);
                     }
                     if self.scopes.last().unwrap().contains_key(name) {
-                        e.push(SemanticError {
+                        errors.push(SemanticError {
                             message: format!("variable `{name}` is already declared in this scope"),
                             span: *span,
-                        })
+                        });
                     } else {
-                        self.define(name.clone(), t)
+                        self.define(
+                            name.clone(),
+                            annotation.as_ref().map(type_from_ast).unwrap_or(actual),
+                        );
                     }
                 }
             }
             Stmt::Assign { name, value, span } => {
-                if self.lookup(name).is_none() {
-                    e.push(SemanticError {
+                let expected = self.lookup(name);
+                if expected.is_none() {
+                    errors.push(SemanticError {
                         message: format!("variable `{name}` used before initialization"),
                         span: *span,
-                    })
+                    });
                 }
-                let _ = self.expr(value, e);
+                if let Ok(actual) = self.expr(value, errors) {
+                    if let Some(expected) = expected {
+                        self.report_mismatch(&expected, &actual, *span, errors);
+                    }
+                }
             }
-            Stmt::Print(x) => {
-                let _ = self.expr(x, e);
+            Stmt::Print(expression) => {
+                let _ = self.expr(expression, errors);
             }
-            Stmt::Assert(x) => {
-                if self.expr(x, e) != Ok(VelaRiType::Boolean) {
-                    e.push(SemanticError {
+            Stmt::Assert(expression) => {
+                if self.expr(expression, errors) != Ok(VelaRiType::Boolean) {
+                    errors.push(SemanticError {
                         message: "assert condition must be Boolean".into(),
-                        span: x.span(),
+                        span: expression.span(),
                     });
                 }
             }
             Stmt::Return { value, span } => {
                 if !self.in_function {
-                    e.push(SemanticError {
+                    errors.push(SemanticError {
                         message: "return is only valid inside a function".into(),
                         span: *span,
-                    })
+                    });
                 }
-                if let Some(x) = value {
-                    let _ = self.expr(x, e);
+                let actual = value
+                    .as_ref()
+                    .map(|expression| self.expr(expression, errors).unwrap_or(VelaRiType::Unknown))
+                    .unwrap_or(VelaRiType::Null);
+                if let Some(expected) = &self.return_type {
+                    self.report_mismatch(expected, &actual, *span, errors);
                 }
             }
             Stmt::Function {
                 name,
                 parameters,
                 body,
+                return_type,
                 span,
-                ..
             } => {
                 self.push();
-                for (p, t) in parameters {
+                for (parameter, ty) in parameters {
                     self.define(
-                        p.clone(),
-                        t.as_ref()
-                            .map(|x| match x {
-                                crate::ast::Type::Int => VelaRiType::Int,
-                                crate::ast::Type::Float => VelaRiType::Number,
-                                crate::ast::Type::Bool => VelaRiType::Boolean,
-                                crate::ast::Type::String => VelaRiType::String,
-                                crate::ast::Type::Null => VelaRiType::Null,
-                                _ => VelaRiType::Unknown,
-                            })
+                        parameter.clone(),
+                        ty.as_ref()
+                            .map(type_from_ast)
                             .unwrap_or(VelaRiType::Unknown),
                     );
                 }
-                let old = self.in_function;
+                let old_in_function = self.in_function;
+                let old_return_type = self.return_type.clone();
                 self.in_function = true;
-                for x in body {
-                    self.stmt(x, e);
+                self.return_type = return_type.as_ref().map(type_from_ast);
+                for statement in body {
+                    self.stmt(statement, errors);
                 }
                 if !self.block_returns(body) {
-                    e.push(SemanticError {
+                    errors.push(SemanticError {
                         message: format!("function `{name}` can fall through without returning"),
                         span: *span,
                     });
                 }
-                self.in_function = old;
+                self.in_function = old_in_function;
+                self.return_type = old_return_type;
                 self.pop();
             }
             Stmt::Conditional {
@@ -224,21 +298,21 @@ impl SemanticAnalyzer {
                 otherwise_branch,
                 ..
             } => {
-                if self.expr(condition, e) != Ok(VelaRiType::Boolean) {
-                    e.push(SemanticError {
+                if self.expr(condition, errors) != Ok(VelaRiType::Boolean) {
+                    errors.push(SemanticError {
                         message: "if condition must be Boolean".into(),
                         span: condition.span(),
                     });
                 }
                 self.push();
-                for x in then_branch {
-                    self.stmt(x, e);
+                for statement in then_branch {
+                    self.stmt(statement, errors);
                 }
                 self.pop();
-                if let Some(xs) = otherwise_branch {
+                if let Some(otherwise_branch) = otherwise_branch {
                     self.push();
-                    for x in xs {
-                        self.stmt(x, e);
+                    for statement in otherwise_branch {
+                        self.stmt(statement, errors);
                     }
                     self.pop();
                 }
@@ -247,37 +321,42 @@ impl SemanticAnalyzer {
                 iterations, body, ..
             } => {
                 if !matches!(
-                    self.expr(iterations, e),
+                    self.expr(iterations, errors),
                     Ok(VelaRiType::Int | VelaRiType::Number)
                 ) {
-                    e.push(SemanticError {
+                    errors.push(SemanticError {
                         message: "repeat count must be Number".into(),
                         span: iterations.span(),
                     });
                 }
                 self.push();
-                for x in body {
-                    self.stmt(x, e);
+                for statement in body {
+                    self.stmt(statement, errors);
                 }
                 self.pop();
             }
             Stmt::CreateWindow { width, height, .. } => {
-                for x in [width, height] {
-                    if self.expr(x, e) != Ok(VelaRiType::Number) {
-                        e.push(SemanticError {
+                for expression in [width, height] {
+                    if !matches!(
+                        self.expr(expression, errors),
+                        Ok(VelaRiType::Int | VelaRiType::Number)
+                    ) {
+                        errors.push(SemanticError {
                             message: "window dimensions must be Number".into(),
-                            span: x.span(),
+                            span: expression.span(),
                         });
                     }
                 }
             }
         }
     }
+
     fn block_returns(&self, statements: &[Stmt]) -> bool {
         statements
             .iter()
             .any(|statement| self.statement_returns(statement))
     }
+
     fn statement_returns(&self, statement: &Stmt) -> bool {
         match statement {
             Stmt::Return { .. } => true,
@@ -290,47 +369,83 @@ impl SemanticAnalyzer {
             _ => false,
         }
     }
-    fn expr(&self, x: &Expr, e: &mut Vec<SemanticError>) -> Result<VelaRiType, ()> {
-        match x {
-            Expr::Literal(v, _) => Ok(match v {
-                Value::Number(n) => {
-                    if n.fract() == 0.0 {
-                        VelaRiType::Int
-                    } else {
-                        VelaRiType::Number
-                    }
-                }
+
+    fn expr(&self, expression: &Expr, errors: &mut Vec<SemanticError>) -> Result<VelaRiType, ()> {
+        match expression {
+            Expr::Literal(value, _) => Ok(match value {
+                Value::Number(number) if number.fract() == 0.0 => VelaRiType::Int,
+                Value::Number(_) => VelaRiType::Number,
                 Value::Boolean(_) => VelaRiType::Boolean,
                 Value::String(_) => VelaRiType::String,
                 Value::Null => VelaRiType::Null,
-                Value::Array(_) | Value::Map(_) => VelaRiType::Unknown,
-            }),
-            Expr::Variable(n, sp) => self.lookup(n).ok_or_else(|| {
-                e.push(SemanticError {
-                    message: format!("variable `{n}` used before initialization"),
-                    span: *sp,
-                })
-            }),
-            Expr::Array(xs, _) => {
-                for x in xs {
-                    let _ = self.expr(x, e);
+                Value::Array(values) => {
+                    let element = values
+                        .iter()
+                        .map(value_type)
+                        .fold(VelaRiType::Unknown, |a, b| merge_types(&a, &b));
+                    VelaRiType::Array(Box::new(element))
                 }
-                Ok(VelaRiType::Unknown)
+                Value::Map(values) => {
+                    let value = values
+                        .values()
+                        .map(value_type)
+                        .fold(VelaRiType::Unknown, |a, b| merge_types(&a, &b));
+                    VelaRiType::Map(Box::new(VelaRiType::String), Box::new(value))
+                }
+            }),
+            Expr::Variable(name, span) => self.lookup(name).ok_or_else(|| {
+                errors.push(SemanticError {
+                    message: format!("variable `{name}` used before initialization"),
+                    span: *span,
+                });
+            }),
+            Expr::Array(elements, _) => {
+                let mut element_type = VelaRiType::Unknown;
+                for element in elements {
+                    if let Ok(ty) = self.expr(element, errors) {
+                        element_type = merge_types(&element_type, &ty);
+                    }
+                }
+                Ok(VelaRiType::Array(Box::new(element_type)))
             }
-            Expr::Map(xs, _) => {
-                for (_, x) in xs {
-                    let _ = self.expr(x, e);
+            Expr::Map(entries, span) => {
+                let mut value_type = VelaRiType::Unknown;
+                for (_, value) in entries {
+                    if let Ok(ty) = self.expr(value, errors) {
+                        value_type = merge_types(&value_type, &ty);
+                    }
                 }
-                Ok(VelaRiType::Unknown)
+                let _ = span;
+                Ok(VelaRiType::Map(
+                    Box::new(VelaRiType::String),
+                    Box::new(value_type),
+                ))
             }
             Expr::Index {
                 target,
                 index,
-                span: _,
+                span,
             } => {
-                let _ = self.expr(target, e);
-                let _ = self.expr(index, e);
-                Ok(VelaRiType::Unknown)
+                let target_type = self.expr(target, errors)?;
+                let index_type = self.expr(index, errors)?;
+                match target_type {
+                    VelaRiType::Array(element) => {
+                        self.report_mismatch(&VelaRiType::Int, &index_type, *span, errors);
+                        Ok(*element)
+                    }
+                    VelaRiType::Map(key, value) => {
+                        self.report_mismatch(&key, &index_type, *span, errors);
+                        Ok(*value)
+                    }
+                    VelaRiType::Unknown => Ok(VelaRiType::Unknown),
+                    actual => {
+                        errors.push(SemanticError {
+                            message: format!("cannot index value of type {}", type_name(&actual)),
+                            span: *span,
+                        });
+                        Err(())
+                    }
+                }
             }
             Expr::Call {
                 name,
@@ -339,47 +454,51 @@ impl SemanticAnalyzer {
             } => {
                 if name == "length" {
                     if arguments.len() != 1 {
-                        e.push(SemanticError {
+                        errors.push(SemanticError {
                             message: "length expects one argument".into(),
                             span: *span,
                         });
                     }
-                    for a in arguments {
-                        let _ = self.expr(a, e);
+                    for argument in arguments {
+                        let _ = self.expr(argument, errors);
                     }
-                    return Ok(VelaRiType::Number);
+                    return Ok(VelaRiType::Int);
                 }
-                match self.functions.get(name) {
-                    Some(sig) if sig.parameters == arguments.len() => {
-                        for a in arguments {
-                            let _ = self.expr(a, e);
-                        }
-                        return Ok(sig.result);
+                let Some(signature) = self.functions.get(name) else {
+                    errors.push(SemanticError {
+                        message: format!("unknown function `{name}`"),
+                        span: *span,
+                    });
+                    for argument in arguments {
+                        let _ = self.expr(argument, errors);
                     }
-                    Some(sig) => e.push(SemanticError {
+                    return Ok(VelaRiType::Unknown);
+                };
+                if signature.parameters.len() != arguments.len() {
+                    errors.push(SemanticError {
                         message: format!(
                             "function `{name}` expects {} arguments, got {}",
-                            sig.parameters,
+                            signature.parameters.len(),
                             arguments.len()
                         ),
                         span: *span,
-                    }),
-                    None => e.push(SemanticError {
-                        message: format!("unknown function `{name}`"),
-                        span: *span,
-                    }),
+                    });
                 }
-                for a in arguments {
-                    let _ = self.expr(a, e);
+                for (position, argument) in arguments.iter().enumerate() {
+                    if let Ok(actual) = self.expr(argument, errors) {
+                        if let Some(expected) = signature.parameters.get(position) {
+                            self.report_mismatch(expected, &actual, argument.span(), errors);
+                        }
+                    }
                 }
-                Ok(VelaRiType::Unknown)
+                Ok(signature.result.clone())
             }
             Expr::Unary { op, expr, span } => {
-                let t = self.expr(expr, e).map_err(|_| ())?;
-                if *op == Op::Neg && matches!(t, VelaRiType::Int | VelaRiType::Number) {
-                    Ok(t)
+                let ty = self.expr(expr, errors)?;
+                if *op == Op::Neg && matches!(ty, VelaRiType::Int | VelaRiType::Number) {
+                    Ok(ty)
                 } else {
-                    e.push(SemanticError {
+                    errors.push(SemanticError {
                         message: "unary minus requires Number".into(),
                         span: *span,
                     });
@@ -392,30 +511,33 @@ impl SemanticAnalyzer {
                 right,
                 span,
             } => {
-                let a = self.expr(left, e).map_err(|_| ())?;
-                let b = self.expr(right, e).map_err(|_| ())?;
+                let left_type = self.expr(left, errors)?;
+                let right_type = self.expr(right, errors)?;
                 match op {
                     Op::Add | Op::Sub | Op::Mul | Op::Div
-                        if (matches!(a, VelaRiType::Int | VelaRiType::Number)
-                            && matches!(b, VelaRiType::Int | VelaRiType::Number))
-                            || (a == VelaRiType::Unknown || b == VelaRiType::Unknown) =>
+                        if (matches!(left_type, VelaRiType::Int | VelaRiType::Number)
+                            && matches!(right_type, VelaRiType::Int | VelaRiType::Number))
+                            || left_type == VelaRiType::Unknown
+                            || right_type == VelaRiType::Unknown =>
                     {
-                        Ok(if a == VelaRiType::Unknown || b == VelaRiType::Unknown {
-                            VelaRiType::Unknown
-                        } else {
-                            a
-                        })
+                        Ok(merge_types(&left_type, &right_type))
                     }
-                    Op::Add if a == VelaRiType::String && b == a => Ok(a),
-                    Op::Eq if a == b || a == VelaRiType::Unknown || b == VelaRiType::Unknown => {
-                        Ok(VelaRiType::Boolean)
+                    Op::Add if left_type == VelaRiType::String && right_type == left_type => {
+                        Ok(VelaRiType::String)
                     }
-                    Op::And | Op::Or if a == VelaRiType::Boolean && b == a => {
+                    Op::Eq if compatible(&left_type, &right_type) => Ok(VelaRiType::Boolean),
+                    Op::And | Op::Or
+                        if left_type == VelaRiType::Boolean && right_type == left_type =>
+                    {
                         Ok(VelaRiType::Boolean)
                     }
                     _ => {
-                        e.push(SemanticError {
-                            message: format!("invalid operation {op:?} for {a:?} and {b:?}"),
+                        errors.push(SemanticError {
+                            message: format!(
+                                "invalid operation {op:?} for {} and {}",
+                                type_name(&left_type),
+                                type_name(&right_type)
+                            ),
                             span: *span,
                         });
                         Err(())
@@ -423,5 +545,66 @@ impl SemanticAnalyzer {
                 }
             }
         }
+    }
+}
+
+fn value_type(value: &Value) -> VelaRiType {
+    match value {
+        Value::Number(number) if number.fract() == 0.0 => VelaRiType::Int,
+        Value::Number(_) => VelaRiType::Number,
+        Value::Boolean(_) => VelaRiType::Boolean,
+        Value::String(_) => VelaRiType::String,
+        Value::Null => VelaRiType::Null,
+        Value::Array(values) => VelaRiType::Array(Box::new(
+            values
+                .iter()
+                .map(value_type)
+                .fold(VelaRiType::Unknown, |a, b| merge_types(&a, &b)),
+        )),
+        Value::Map(values) => VelaRiType::Map(
+            Box::new(VelaRiType::String),
+            Box::new(
+                values
+                    .values()
+                    .map(value_type)
+                    .fold(VelaRiType::Unknown, |a, b| merge_types(&a, &b)),
+            ),
+        ),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::{lexer::Lexer, parser::Parser};
+
+    fn analyze(source: &str) -> Result<(), Vec<SemanticError>> {
+        let tokens = Lexer::new(source).tokenize().expect("tokens");
+        let ast = Parser::new(tokens).parse_program().expect("ast");
+        SemanticAnalyzer::new().analyze(&ast)
+    }
+
+    #[test]
+    fn infers_collection_element_types() {
+        let source = "begin\nlet values be [1, 2, 3]\nlet names be {\"first\": \"VelaRi\"}\nprint values[1]\nprint names[\"first\"]\nend";
+        assert!(analyze(source).is_ok());
+    }
+
+    #[test]
+    fn rejects_invalid_collection_annotation() {
+        let source = "begin\nlet values: Array<Int> be [1, \"wrong\"]\nend";
+        let errors = analyze(source).expect_err("mixed array should fail");
+        assert!(errors
+            .iter()
+            .any(|error| error.message.contains("Array<Int>")));
+    }
+
+    #[test]
+    fn validates_function_arguments_and_returns() {
+        let source = "begin\nfunction add(a: Int, b: Int): Int\nreturn \"wrong\"\nend\nprint add(\"wrong\", true)\nend";
+        let errors = analyze(source).expect_err("invalid call should fail");
+        assert!(errors
+            .iter()
+            .any(|error| error.message.contains("expected Int")));
     }
 }

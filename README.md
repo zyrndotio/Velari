@@ -182,7 +182,7 @@ Supported expression operators, from lower to higher precedence, are:
 
 ## Explicit types and IR
 
-VelaRi 0.4.2 accepts explicit primitive and collection annotations:
+VelaRi 0.4.3 accepts explicit primitive and collection annotations:
 
 ```velari
 begin
@@ -364,7 +364,7 @@ Please use GitHub Issues for bugs and feature proposals, and include a minimal V
 
 ## Release status
 
-VelaRi 0.4.2 is the distribution and tooling milestone. The typed interpreter and backend-neutral IR remain the current execution foundation; native executable generation is planned for the 0.5.x line.
+VelaRi 0.4.3 is the semantic typing milestone. Collection element and map value types now propagate through semantic analysis, function calls validate annotated parameters, and return values are checked against annotated function results. The typed interpreter and backend-neutral IR remain the current execution foundation; native executable generation is planned for the 0.5.x line.
 
 ## License
 

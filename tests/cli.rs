@@ -10,7 +10,7 @@ fn version_command_reports_current_release() {
     assert!(output.status.success());
     assert_eq!(
         String::from_utf8_lossy(&output.stdout).trim(),
-        "velari 0.4.2"
+        "velari 0.4.3"
     );
 }
 
