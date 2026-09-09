@@ -76,6 +76,7 @@ cargo run -- check examples/basic.vr
 cargo run -- run examples/basic.vr
 cargo run -- new hello-world
 cargo run -- check hello-world/src/main.vr
+cargo run -- test hello-world
 ```
 
 After installing the release binary, use the same commands without `cargo run --`:
@@ -92,7 +93,8 @@ velari new hello-world
 | `velari version` | Print the compiler version. |
 | `velari check <file>` | Lex, parse, and semantically validate a VelaRi source file without executing it. |
 | `velari run <file>` | Validate and execute a source file with the tree-walking interpreter. |
-| `velari new <directory>` | Create a starter project containing `vela.toml` and `src/main.vr`. |
+| `velari new <directory>` | Create a starter project containing `vela.toml`, `src/main.vr`, and a `tests/` directory. |
+| `velari test [project]` | Run every `.vr` file under the project `tests/` directory. |
 
 ## Language example
 
@@ -210,6 +212,22 @@ Interpreter ──► executable behavior during early development
 
 The interpreter is a development backend, not the final deployment model. The planned native backend will consume the same validated front end and lower VelaRi types to target-specific native representations.
 
+## Project discovery and tests
+
+When `check`, `run`, or `test` receives a directory, VelaRi searches that directory and its parents for `vela.toml`. The manifest entry defaults to `src/main.vr` when no `entry` value is present. A generated project includes an empty `tests/` directory so project-level tests can be added immediately.
+
+Place executable VelaRi test programs under `tests/`:
+
+```text
+my-project/
+├── vela.toml
+├── src/main.vr
+└── tests/
+    └── smoke.vr
+```
+
+Run them with `velari test` from the project directory or with `velari test path/to/project`. Each `.vr` file must parse, pass semantic analysis, and execute successfully.
+
 ## Development workflow
 
 Run the complete test suite:
@@ -274,7 +292,7 @@ Please use GitHub Issues for bugs and feature proposals, and include a minimal V
 
 ## Release status
 
-VelaRi 0.3.1 is an interpreter-focused milestone. Collection values currently use runtime representations and will receive explicit generic types and native backend mappings in a future release.
+VelaRi 0.3.2 is an interpreter-focused reliability milestone. Collection values currently use runtime representations and will receive explicit generic types and native backend mappings in a future release.
 
 ## License
 

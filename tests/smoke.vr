@@ -1,0 +1,4 @@
+begin
+    let values be [1, 2, 3]
+    print length(values)
+end
