@@ -19,7 +19,7 @@ impl SemanticAnalyzer {
   Stmt::Block(xs)=>for x in xs{self.stmt(x,e)},
   Stmt::Let{name,value,span}=>{if let Ok(t)=self.expr(value,e){if self.scopes.last().unwrap().contains_key(name){e.push(SemanticError{message:format!("variable `{name}` is already declared in this scope"),span:*span})}else{self.define(name.clone(),t)}}},
   Stmt::Assign{name,value,span}=>{if self.lookup(name).is_none(){e.push(SemanticError{message:format!("variable `{name}` used before initialization"),span:*span})}let _=self.expr(value,e);},
-  Stmt::Print(x)=>{let _=self.expr(x,e);},
+  Stmt::Print(x)=>{let _=self.expr(x,e);},Stmt::Assert(x)=>{if self.expr(x,e)!=Ok(VelaRiType::Boolean){e.push(SemanticError{message:"assert condition must be Boolean".into(),span:x.span()});}},
   Stmt::Return{value,span}=>{if !self.in_function{e.push(SemanticError{message:"return is only valid inside a function".into(),span:*span})}if let Some(x)=value{let _=self.expr(x,e);}self.return_seen=true;},
   Stmt::Function{name,parameters,body,span}=>{self.push();for p in parameters{self.define(p.clone(),VelaRiType::Unknown);}let old=self.in_function;let old_return=self.return_seen;self.in_function=true;self.return_seen=false;for x in body{self.stmt(x,e);}if !self.return_seen{e.push(SemanticError{message:format!("function `{name}` has no return statement"),span:*span});}self.in_function=old;self.return_seen=old_return;self.pop();},
   Stmt::Conditional{condition,then_branch,otherwise_branch,..}=>{if self.expr(condition,e)!=Ok(VelaRiType::Boolean){e.push(SemanticError{message:"if condition must be Boolean".into(),span:condition.span()});}self.push();for x in then_branch{self.stmt(x,e);}self.pop();if let Some(xs)=otherwise_branch{self.push();for x in xs{self.stmt(x,e);}self.pop();}},

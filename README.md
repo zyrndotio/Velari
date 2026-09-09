@@ -37,6 +37,7 @@ The current codebase provides a coherent front-end and interpreter foundation:
 - Printing and window-declaration syntax in the interpreter
 - Lexical scopes, assignments, functions, function calls, and return statements
 - Array and map literals, indexing, and the built-in `length` function
+- Human-readable runtime values and executable `assert` test statements
 - A cross-platform Rust CLI for checking, running, creating projects, and reporting the version
 
 ## Install from source
@@ -64,7 +65,7 @@ To use `velari` directly from any PowerShell window, copy `target\release\velari
 
 ## Download a release
 
-Prebuilt source archives and release assets are published on the [GitHub Releases page](https://github.com/zyrndotio/Velari/releases). The source archive can also be built on any supported Rust host with the commands above.
+Prebuilt source archives and release assets are published on the [GitHub Releases page](https://github.com/zyrndotio/Velari/releases). The source archive can also be built on any supported Rust host with the commands above. Release archives include a SHA-256 checksum file.
 
 ## Command-line usage
 
@@ -121,11 +122,11 @@ end
 The parser applies normal precedence, so `10 + 5 * 2` evaluates as `10 + (5 * 2)`. The example prints values equivalent to:
 
 ```text
-Number(20.0)
-String("hello VelaRi")
-Boolean(true)
-Number(19.0)
-Number(19.0)
+20
+hello VelaRi
+true
+19
+19
 ```
 
 ## Syntax overview
@@ -138,6 +139,7 @@ begin
     let answer be 42
     let message be "VelaRi"
     print message
+    assert enabled
 end
 ```
 
@@ -226,7 +228,7 @@ my-project/
     └── smoke.vr
 ```
 
-Run them with `velari test` from the project directory or with `velari test path/to/project`. Each `.vr` file must parse, pass semantic analysis, and execute successfully.
+Run them with `velari test` from the project directory or with `velari test path/to/project`. Each `.vr` file must parse, pass semantic analysis, and execute successfully. Test files can use `assert condition`; a false assertion fails the test with a non-zero exit status.
 
 ## Development workflow
 
@@ -292,7 +294,7 @@ Please use GitHub Issues for bugs and feature proposals, and include a minimal V
 
 ## Release status
 
-VelaRi 0.3.2 is an interpreter-focused reliability milestone. Collection values currently use runtime representations and will receive explicit generic types and native backend mappings in a future release.
+VelaRi 0.3.3 is an interpreter-focused polish and developer-experience milestone. Collection values currently use runtime representations and will receive explicit generic types and native backend mappings in a future release.
 
 ## License
 

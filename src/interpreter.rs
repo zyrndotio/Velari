@@ -15,7 +15,7 @@ impl Interpreter {
   Stmt::Block(xs)=>{for x in xs{if let Flow::Return(v)=self.exec(x)?{return Ok(Flow::Return(v));}}Ok(Flow::Continue)},
   Stmt::Let{name,value,..}=>{let v=self.eval(value)?;self.define(name.clone(),v);Ok(Flow::Continue)},
   Stmt::Assign{name,value,..}=>{let v=self.eval(value)?;if !self.assign(name,v){return Err(RuntimeError(format!("undefined variable `{name}`")));}Ok(Flow::Continue)},
-  Stmt::Print(x)=>{println!("{:?}",self.eval(x)?);Ok(Flow::Continue)},
+  Stmt::Print(x)=>{println!("{}",self.eval(x)?.display());Ok(Flow::Continue)},Stmt::Assert(x)=>{match self.eval(x)?{Value::Boolean(true)=>Ok(Flow::Continue),Value::Boolean(false)=>Err(RuntimeError("assertion failed".into())),_=>Err(RuntimeError("assert condition must be Boolean".into()))}},
   Stmt::Return{value,..}=>Ok(Flow::Return(value.as_ref().map(|x|self.eval(x)).transpose()?.unwrap_or(Value::Null))),
   Stmt::Function{..}=>Ok(Flow::Continue),
   Stmt::Conditional{condition,then_branch,otherwise_branch,..}=>{let yes=matches!(self.eval(condition)?,Value::Boolean(true));let xs=if yes{Some(then_branch)}else{otherwise_branch.as_ref()};if let Some(xs)=xs{self.push();let r=self.exec(&Stmt::Block(xs.clone()))?;self.pop();Ok(r)}else{Ok(Flow::Continue)}},

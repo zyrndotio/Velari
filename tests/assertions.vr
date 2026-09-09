@@ -1,0 +1,4 @@
+begin
+    let values be [1, 2, 3]
+    assert length(values) == 3
+end
