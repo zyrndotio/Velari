@@ -67,28 +67,25 @@ jobs:
     name: Installer ${{ matrix.name }}
     needs: portable
     strategy:
+      fail-fast: false
       matrix:
         include:
           - name: Windows NSIS
             os: windows-latest
             format: nsis
-            output_dir: target/release/packager/nsis
-            rename: Velari-Setup.exe
+            pattern: target/release/Velari*.exe
           - name: Linux Debian
             os: ubuntu-latest
             format: deb
-            output_dir: target/release/packager/deb
-            rename: ""
+            pattern: target/release/*.deb
           - name: Linux AppImage
             os: ubuntu-latest
             format: appimage
-            output_dir: target/release/packager/appimage
-            rename: ""
+            pattern: target/release/*.AppImage
           - name: macOS DMG
             os: macos-latest
             format: dmg
-            output_dir: target/release/packager/dmg
-            rename: ""
+            pattern: target/release/*.dmg
     runs-on: ${{ matrix.os }}
     steps:
       - name: Checkout code
@@ -109,7 +106,7 @@ jobs:
         if: runner.os == 'Windows'
         shell: bash
         run: |
-          installer=$(find "${{ matrix.output_dir }}" -maxdepth 1 -type f -iname '*.exe' | head -1)
+          installer=$(find target/release -maxdepth 1 -type f -iname 'Velari*.exe' | head -1)
           test -n "$installer"
           cp "$installer" Velari-Setup.exe
       - name: Stage installer files
@@ -117,7 +114,7 @@ jobs:
         shell: bash
         run: |
           mkdir -p staging
-          find "${{ matrix.output_dir }}" -maxdepth 1 -type f -exec cp {} staging/ \;
+          find target/release -maxdepth 1 -type f -path "${{ matrix.pattern }}" -exec cp {} staging/ \;
       - name: Create installer checksums
         shell: bash
         run: |
