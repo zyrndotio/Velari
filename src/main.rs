@@ -11,11 +11,12 @@ use lexer::Lexer;
 use parser::Parser;
 use semantic::SemanticAnalyzer;
 use std::{
+    collections::HashSet,
     env, fs,
     io::Write,
     path::{Path, PathBuf},
 };
-const VERSION: &str = "0.4.5-beta.1";
+const VERSION: &str = "0.4.5-beta.2";
 
 fn install_path() -> Result<PathBuf, String> {
     let home = env::var_os("HOME")
@@ -75,6 +76,7 @@ fn manifest_data(manifest: &Path) -> Result<(String, PathBuf, bool), String> {
     let mut entry = None;
     let mut desktop = false;
     let mut package_seen = false;
+    let mut seen_keys = HashSet::new();
     let mut section = "package";
     for (line_no, line) in text.lines().enumerate() {
         let line = line.trim();
@@ -97,6 +99,13 @@ fn manifest_data(manifest: &Path) -> Result<(String, PathBuf, bool), String> {
         };
         let key = key.trim();
         let value = value.trim().trim_matches('"');
+        let key_id = format!("{section}.{key}");
+        if !seen_keys.insert(key_id) {
+            return Err(format!(
+                "duplicate manifest field `{key}` on line {}",
+                line_no + 1
+            ));
+        }
         match key {
             "name" => {
                 if value.is_empty() {
@@ -231,6 +240,19 @@ fn format_file(path: &Path, write: bool) -> Result<(), String> {
     Ok(())
 }
 
+fn check_format_file(path: &Path) -> Result<(), String> {
+    let source = fs::read_to_string(path).map_err(|e| e.to_string())?;
+    if source == format_source(&source) {
+        Ok(())
+    } else {
+        Err(format!(
+            "{} is not formatted; run `velari fmt --write {}`",
+            path.display(),
+            path.display()
+        ))
+    }
+}
+
 fn run_tests(root: &Path) -> Result<(), String> {
     let dir = root.join("tests");
     if !dir.is_dir() {
@@ -336,16 +358,21 @@ fn main() {
         Some("where") => where_installed(),
         Some("fmt") => {
             let first = args.next();
-            let (write, path) = if first.as_deref() == Some("--write") {
-                (true, args.next())
+            let (mode, path) = if first.as_deref() == Some("--write") {
+                ("write", args.next())
+            } else if first.as_deref() == Some("--check") {
+                ("check", args.next())
             } else {
-                (false, first)
+                ("print", first)
             };
             match path {
-                Some(path) => format_file(Path::new(&path), write),
-                None => {
-                    Err("fmt requires a source file; use `fmt --write <file>` to update it".into())
-                }
+                Some(path) if mode == "write" => format_file(Path::new(&path), true),
+                Some(path) if mode == "check" => check_format_file(Path::new(&path)),
+                Some(path) => format_file(Path::new(&path), false),
+                None => Err(
+                    "fmt requires a source file; use `fmt --check <file>` or `fmt --write <file>`"
+                        .into(),
+                ),
             }
         }
         Some("package") => project_root(args.next()).and_then(|r| package(&r)),

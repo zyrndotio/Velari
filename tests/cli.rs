@@ -10,7 +10,7 @@ fn version_command_reports_current_release() {
     assert!(output.status.success());
     assert_eq!(
         String::from_utf8_lossy(&output.stdout).trim(),
-        "velari 0.4.5-beta.1"
+        "velari 0.4.5-beta.2"
     );
 }
 
@@ -49,9 +49,27 @@ fn formatter_normalizes_indentation_and_supports_write() {
         .unwrap();
     assert!(written.status.success());
     assert_eq!(
-        fs::read_to_string(file).unwrap(),
+        fs::read_to_string(&file).unwrap(),
         "begin\n    print 1\n    if true then\n        print 2\n    end\nend\n"
     );
+    let checked = velari()
+        .args(["fmt", "--check", file.to_str().unwrap()])
+        .output()
+        .unwrap();
+    assert!(checked.status.success());
+}
+
+#[test]
+fn formatter_check_rejects_unformatted_source() {
+    let dir = tempfile_dir("fmt-check");
+    let file = dir.join("main.vr");
+    fs::write(&file, "begin\nprint 1\nend\n").unwrap();
+    let output = velari()
+        .args(["fmt", "--check", file.to_str().unwrap()])
+        .output()
+        .unwrap();
+    assert!(!output.status.success());
+    assert!(String::from_utf8_lossy(&output.stderr).contains("fmt --write"));
 }
 
 #[test]
@@ -64,6 +82,22 @@ fn manifest_requires_package_section() {
         .unwrap();
     assert!(!output.status.success());
     assert!(String::from_utf8_lossy(&output.stderr).contains("[package] section"));
+}
+
+#[test]
+fn manifest_rejects_duplicate_fields() {
+    let dir = tempfile_dir("duplicate-manifest");
+    fs::write(
+        dir.join("vela.toml"),
+        "[package]\nname = \"fixture\"\nname = \"again\"\n",
+    )
+    .unwrap();
+    let output = velari()
+        .args(["check", dir.to_str().unwrap()])
+        .output()
+        .unwrap();
+    assert!(!output.status.success());
+    assert!(String::from_utf8_lossy(&output.stderr).contains("duplicate manifest field"));
 }
 
 #[test]
