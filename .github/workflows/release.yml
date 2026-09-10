@@ -106,7 +106,7 @@ jobs:
         if: runner.os == 'Windows'
         shell: bash
         run: |
-          installer=$(find target/release -maxdepth 1 -type f -iname 'Velari*.exe' | head -1)
+          installer=$(find target/release -maxdepth 1 -type f -iname '*-setup.exe' | head -1)
           test -n "$installer"
           cp "$installer" Velari-Setup.exe
       - name: Stage installer files
