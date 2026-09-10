@@ -10,7 +10,7 @@ fn version_command_reports_current_release() {
     assert!(output.status.success());
     assert_eq!(
         String::from_utf8_lossy(&output.stdout).trim(),
-        "velari 0.4.4"
+        "velari 0.4.5-beta.1"
     );
 }
 
@@ -30,6 +30,40 @@ fn check_and_run_accept_a_source_file() {
         .unwrap();
     assert!(run.status.success());
     assert!(String::from_utf8_lossy(&run.stdout).contains('5'));
+}
+
+#[test]
+fn formatter_normalizes_indentation_and_supports_write() {
+    let dir = tempfile_dir("fmt");
+    let file = dir.join("main.vr");
+    fs::write(&file, "begin\nprint 1\nif true then\nprint 2\nend\nend\n").unwrap();
+    let output = velari()
+        .args(["fmt", file.to_str().unwrap()])
+        .output()
+        .unwrap();
+    assert!(output.status.success());
+    assert!(String::from_utf8_lossy(&output.stdout).contains("    print 1"));
+    let written = velari()
+        .args(["fmt", "--write", file.to_str().unwrap()])
+        .output()
+        .unwrap();
+    assert!(written.status.success());
+    assert_eq!(
+        fs::read_to_string(file).unwrap(),
+        "begin\n    print 1\n    if true then\n        print 2\n    end\nend\n"
+    );
+}
+
+#[test]
+fn manifest_requires_package_section() {
+    let dir = tempfile_dir("manifest");
+    fs::write(dir.join("vela.toml"), "[desktop]\nbackend = \"auto\"\n").unwrap();
+    let output = velari()
+        .args(["check", dir.to_str().unwrap()])
+        .output()
+        .unwrap();
+    assert!(!output.status.success());
+    assert!(String::from_utf8_lossy(&output.stderr).contains("[package] section"));
 }
 
 #[test]
@@ -66,7 +100,7 @@ fn test_command_runs_vr_files_in_tests_directory() {
 }
 
 fn tempfile_dir(label: &str) -> std::path::PathBuf {
-    let path = std::env::temp_dir().join(format!("velari-0-3-2-{label}-{}", std::process::id()));
+    let path = std::env::temp_dir().join(format!("velari-0-4-5-{label}-{}", std::process::id()));
     let _ = fs::remove_dir_all(&path);
     fs::create_dir_all(&path).unwrap();
     path
@@ -85,6 +119,7 @@ fn check_reports_stable_diagnostic_context() {
     let stderr = String::from_utf8_lossy(&output.stderr);
     assert!(stderr.contains("error[E3001]"));
     assert!(stderr.contains("variable `missing` used before initialization"));
+    assert!(stderr.contains("help:"));
     assert!(stderr.contains("-->"));
 }
 
@@ -107,7 +142,7 @@ fn new_project_has_desktop_metadata_and_package_validation() {
         .unwrap()
         .status
         .success());
-    let manifest = std::fs::read_to_string(project.join("vela.toml")).unwrap();
+    let manifest = fs::read_to_string(project.join("vela.toml")).unwrap();
     assert!(manifest.contains("[desktop]"));
     let output = velari()
         .args(["package", project.to_str().unwrap()])
@@ -121,7 +156,7 @@ fn new_project_has_desktop_metadata_and_package_validation() {
 fn typed_declaration_and_ir_command_work() {
     let dir = tempfile_dir("typed");
     let file = dir.join("typed.vr");
-    std::fs::write(&file, "begin\n let count: Int be 3\n print count\nend\n").unwrap();
+    fs::write(&file, "begin\n let count: Int be 3\n print count\nend\n").unwrap();
     let checked = velari()
         .args(["check", file.to_str().unwrap()])
         .output()

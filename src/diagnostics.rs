@@ -31,8 +31,17 @@ impl Diagnostic {
             " ".repeat(width),
             "^".repeat(length.min(line.len().saturating_sub(width).max(1)))
         );
+        let suggestion = if self.message.contains("used before initialization") {
+            "\nhelp: declare the variable with `let name be value` before using it"
+        } else if self.message.contains("type mismatch") {
+            "\nhelp: make the expression's type match the declared annotation"
+        } else if self.message.contains("expected expression") {
+            "\nhelp: check the previous statement and keep one expression per line"
+        } else {
+            ""
+        };
         format!(
-            "{}[{}]: {}\n\n --> {}:{}:{}\n  |\n{} | {}\n  | {}\n",
+            "{}[{}]: {}\n\n --> {}:{}:{}\n  |\n{} | {}\n  | {}{}\n",
             match self.level {
                 Level::Error => "error",
             },
@@ -43,7 +52,8 @@ impl Diagnostic {
             self.span.column,
             self.span.line,
             line,
-            mark
+            mark,
+            suggestion
         )
     }
 }

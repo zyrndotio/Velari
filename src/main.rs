@@ -15,7 +15,7 @@ use std::{
     io::Write,
     path::{Path, PathBuf},
 };
-const VERSION: &str = "0.4.4";
+const VERSION: &str = "0.4.5-beta.1";
 
 fn install_path() -> Result<PathBuf, String> {
     let home = env::var_os("HOME")
@@ -74,6 +74,7 @@ fn manifest_data(manifest: &Path) -> Result<(String, PathBuf, bool), String> {
     let mut name = "velari-app".to_string();
     let mut entry = None;
     let mut desktop = false;
+    let mut package_seen = false;
     let mut section = "package";
     for (line_no, line) in text.lines().enumerate() {
         let line = line.trim();
@@ -86,6 +87,9 @@ fn manifest_data(manifest: &Path) -> Result<(String, PathBuf, bool), String> {
                 return Err(format!("unsupported manifest section `{section}`"));
             }
             desktop = section == "desktop";
+            if section == "package" {
+                package_seen = true;
+            }
             continue;
         }
         let Some((key, value)) = line.split_once('=') else {
@@ -98,9 +102,30 @@ fn manifest_data(manifest: &Path) -> Result<(String, PathBuf, bool), String> {
                 if value.is_empty() {
                     return Err("package name cannot be empty".into());
                 }
+                if section != "package" {
+                    return Err(format!(
+                        "`name` is only valid in [package] on line {}",
+                        line_no + 1
+                    ));
+                }
+                if !value
+                    .chars()
+                    .all(|c| c.is_ascii_alphanumeric() || matches!(c, '-' | '_'))
+                {
+                    return Err(format!(
+                        "package name contains invalid characters on line {}",
+                        line_no + 1
+                    ));
+                }
                 name = value.to_string()
             }
             "version" => {
+                if section != "package" {
+                    return Err(format!(
+                        "`version` is only valid in [package] on line {}",
+                        line_no + 1
+                    ));
+                }
                 if value.is_empty() {
                     return Err("package version cannot be empty".into());
                 }
@@ -134,6 +159,9 @@ fn manifest_data(manifest: &Path) -> Result<(String, PathBuf, bool), String> {
             }
         }
     }
+    if !package_seen {
+        return Err("manifest must contain a [package] section".into());
+    }
     let path = manifest
         .parent()
         .unwrap_or(Path::new("."))
@@ -164,6 +192,45 @@ fn project_root(arg: Option<String>) -> Result<PathBuf, String> {
     let m = manifest_from(&p).ok_or_else(|| "could not find vela.toml".to_string())?;
     Ok(m.parent().unwrap_or(Path::new(".")).to_path_buf())
 }
+
+fn format_source(source: &str) -> String {
+    let mut indent = 0usize;
+    let mut output = Vec::new();
+    for raw in source.lines() {
+        let trimmed = raw.trim();
+        if trimmed.is_empty() {
+            if output.last().is_some_and(|line: &String| !line.is_empty()) {
+                output.push(String::new());
+            }
+            continue;
+        }
+        let first = trimmed.split_whitespace().next();
+        if matches!(first, Some("end") | Some("otherwise")) {
+            indent = indent.saturating_sub(1);
+        }
+        output.push(format!("{}{}", "    ".repeat(indent), trimmed));
+        if matches!(
+            first,
+            Some("begin") | Some("function") | Some("if") | Some("otherwise") | Some("repeat")
+        ) {
+            indent += 1;
+        }
+    }
+    format!("{}\n", output.join("\n"))
+}
+
+fn format_file(path: &Path, write: bool) -> Result<(), String> {
+    let source = fs::read_to_string(path).map_err(|e| e.to_string())?;
+    let formatted = format_source(&source);
+    if write {
+        fs::write(path, formatted).map_err(|e| e.to_string())?;
+        println!("formatted {}", path.display());
+    } else {
+        print!("{formatted}");
+    }
+    Ok(())
+}
+
 fn run_tests(root: &Path) -> Result<(), String> {
     let dir = root.join("tests");
     if !dir.is_dir() {
@@ -233,7 +300,7 @@ status=validated; native executable generation is planned for a future release",
     Ok(())
 }
 fn usage() {
-    eprintln!("VelaRi {VERSION}\nusage: velari <check|run|test|build|package|ir|install|uninstall|where|system|new|version> [file|project]");
+    eprintln!("VelaRi {VERSION}\nusage: velari <check|run|test|build|package|fmt|ir|install|uninstall|where|system|new|version> [file|project]");
 }
 fn main() {
     let mut args = env::args().skip(1);
@@ -267,6 +334,20 @@ fn main() {
         Some("install") => install(),
         Some("uninstall") => uninstall(),
         Some("where") => where_installed(),
+        Some("fmt") => {
+            let first = args.next();
+            let (write, path) = if first.as_deref() == Some("--write") {
+                (true, args.next())
+            } else {
+                (false, first)
+            };
+            match path {
+                Some(path) => format_file(Path::new(&path), write),
+                None => {
+                    Err("fmt requires a source file; use `fmt --write <file>` to update it".into())
+                }
+            }
+        }
         Some("package") => project_root(args.next()).and_then(|r| package(&r)),
         Some("check") | Some("run") | Some("build") => {
             let run = command.as_deref() == Some("run");
