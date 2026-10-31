@@ -2,6 +2,21 @@
 
 VelaRi is a Rust-based programming language and compiler foundation for safe, fast, cross-platform native desktop applications. The project is designed to grow from a small, readable language core into a production-quality toolchain targeting Windows, Linux, and macOS on x86_64 and ARM64.
 
+## Go toolchain migration
+
+The repository also includes an importable, OS-neutral Go implementation under `go/` and `cmd/velari/`. It preserves the current `begin`/`end` syntax and provides a span-aware lexer, Pratt parser, AST, tree-walking interpreter, CLI, REPL, and initial native/WASM build targets.
+
+```bash
+go test ./...
+go run ./cmd/velari check examples/basic.vr
+go run ./cmd/velari run examples/basic.vr
+go run ./cmd/velari --repl
+make build-all   # windows/amd64, darwin/arm64, linux/amd64
+make wasm        # GOOS=js GOARCH=wasm
+```
+
+See [`docs/go-architecture.md`](docs/go-architecture.md) for the Rust-to-Go mapping, WASM boundary, desktop host strategy, and remaining semantic/IR migration phases.
+
 > **Project status:** early development. The current release contains a working lexer, recoverable parser, structured diagnostics, typed semantic-analysis pass, scoped interpreter, functions, and CLI. Native LLVM code generation, package management, and the modular desktop runtime are planned roadmap work.
 
 [![Rust](https://img.shields.io/badge/built_with-Rust-dea584.svg)](https://www.rust-lang.org/)
