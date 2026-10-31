@@ -17,6 +17,8 @@ make wasm        # GOOS=js GOARCH=wasm
 
 See [`docs/go-architecture.md`](docs/go-architecture.md) for the Rust-to-Go mapping, WASM boundary, desktop host strategy, and remaining semantic/IR migration phases.
 
+The next compiler phase is specified in [`docs/semantic-ir-design.md`](docs/semantic-ir-design.md), including the type system, symbol passes, diagnostics, CFG-based typed IR, validation invariants, lowering rules, and acceptance criteria.
+
 > **Project status:** early development. The current release contains a working lexer, recoverable parser, structured diagnostics, typed semantic-analysis pass, scoped interpreter, functions, and CLI. Native LLVM code generation, package management, and the modular desktop runtime are planned roadmap work.
 
 [![Rust](https://img.shields.io/badge/built_with-Rust-dea584.svg)](https://www.rust-lang.org/)
