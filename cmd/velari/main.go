@@ -2,34 +2,44 @@ package main
 
 import (
 	"bufio"
+	"errors"
 	"flag"
 	"fmt"
 	"github.com/zyrndotio/Velari/go/ast"
 	"github.com/zyrndotio/Velari/go/lexer"
 	"github.com/zyrndotio/Velari/go/parser"
 	"github.com/zyrndotio/Velari/go/runtime"
+	"github.com/zyrndotio/Velari/go/semantic"
 	"io"
 	"os"
 	"strings"
 )
 
-const version = "0.5.0-go"
+const version = "0.6.0-go"
 
-func compile(source string) (ast.Stmt, error) {
-	ts, le := lexer.New(source).Tokenize()
-	if len(le) > 0 {
-		return nil, le[0]
+func compile(source string) (ast.Stmt, *semantic.Program, error) {
+	ts, lexErrors := lexer.New(source).Tokenize()
+	if len(lexErrors) > 0 {
+		return nil, nil, lexErrors[0]
 	}
-	tree, pe := parser.New(ts).Parse()
-	if len(pe) > 0 {
-		return nil, pe[0]
+	tree, parseErrors := parser.New(ts).Parse()
+	if len(parseErrors) > 0 {
+		return nil, nil, parseErrors[0]
 	}
-	return tree, nil
+	typed, diagnostics := semantic.Analyze(tree)
+	if len(diagnostics) > 0 {
+		messages := make([]string, len(diagnostics))
+		for n, d := range diagnostics {
+			messages[n] = d.Error()
+		}
+		return tree, typed, errors.New(strings.Join(messages, "\n"))
+	}
+	return tree, typed, nil
 }
 func execute(source string, w io.Writer) error {
-	tree, e := compile(source)
-	if e != nil {
-		return e
+	tree, _, err := compile(source)
+	if err != nil {
+		return err
 	}
 	return runtime.New(w).Execute(tree)
 }
@@ -42,8 +52,8 @@ func repl() {
 			return
 		}
 		if line != "" {
-			if e := execute("begin\n"+line+"\nend", os.Stdout); e != nil {
-				fmt.Fprintln(os.Stderr, e)
+			if err := execute("begin\n"+line+"\nend", os.Stdout); err != nil {
+				fmt.Fprintln(os.Stderr, err)
 			}
 		}
 		fmt.Print("velari> ")
@@ -66,7 +76,7 @@ func main() {
 		}
 		b, e := os.ReadFile(flag.Arg(1))
 		if e == nil {
-			_, e = compile(string(b))
+			_, _, e = compile(string(b))
 		}
 		if e != nil {
 			fmt.Fprintln(os.Stderr, e)

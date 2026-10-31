@@ -170,7 +170,7 @@ func (i *Interpreter) eval(e ast.Expr) (ast.Value, error) {
 			}
 			xs[n] = v
 		}
-		return ast.Value{Kind: "Array", Array: xs}, nil
+		return ast.Value{Kind: ast.TypeArray, Array: xs}, nil
 	case ast.Map:
 		m := map[string]ast.Value{}
 		for _, e := range x.Entries {
@@ -180,7 +180,7 @@ func (i *Interpreter) eval(e ast.Expr) (ast.Value, error) {
 			}
 			m[e.Key] = v
 		}
-		return ast.Value{Kind: "Map", Map: m}, nil
+		return ast.Value{Kind: ast.TypeMap, Map: m}, nil
 	case ast.Index:
 		t, er := i.eval(x.Target)
 		if er != nil {
@@ -190,14 +190,14 @@ func (i *Interpreter) eval(e ast.Expr) (ast.Value, error) {
 		if er != nil {
 			return ast.Value{}, er
 		}
-		if t.Kind == "Array" && k.Kind != ast.TypeString {
+		if t.Kind == ast.TypeArray && k.Kind != ast.TypeString {
 			n := int(k.Number)
 			if n >= 0 && n < len(t.Array) {
 				return t.Array[n], nil
 			}
 			return ast.Value{}, Error{"array index out of bounds"}
 		}
-		if t.Kind == "Map" && k.Kind == ast.TypeString {
+		if t.Kind == ast.TypeMap && k.Kind == ast.TypeString {
 			if v, ok := t.Map[k.String]; ok {
 				return v, nil
 			}
@@ -216,9 +216,9 @@ func (i *Interpreter) eval(e ast.Expr) (ast.Value, error) {
 			n := 0
 			if v.Kind == ast.TypeString {
 				n = len([]rune(v.String))
-			} else if v.Kind == "Array" {
+			} else if v.Kind == ast.TypeArray {
 				n = len(v.Array)
-			} else if v.Kind == "Map" {
+			} else if v.Kind == ast.TypeMap {
 				n = len(v.Map)
 			} else {
 				return ast.Value{}, Error{"length requires a string, array, or map"}

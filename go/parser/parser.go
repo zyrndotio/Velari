@@ -212,10 +212,12 @@ func (p *Parser) typeExpr() *ast.Type {
 	case "Null":
 		ty.Kind = ast.TypeNull
 	case "Array":
+		ty.Kind = ast.TypeArray
 		p.need(lexer.Less)
 		ty.Element = p.typeExpr()
 		p.need(lexer.Greater)
 	case "Map":
+		ty.Kind = ast.TypeMap
 		p.need(lexer.Less)
 		ty.Key = p.typeExpr()
 		p.need(lexer.Comma)

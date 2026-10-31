@@ -12,6 +12,8 @@ const (
 	TypeBool    TypeKind = "Bool"
 	TypeString  TypeKind = "String"
 	TypeNull    TypeKind = "Null"
+	TypeArray   TypeKind = "Array"
+	TypeMap     TypeKind = "Map"
 )
 
 type Type struct {
@@ -55,7 +57,7 @@ func (v Value) Display() string {
 		return v.String
 	case TypeNull:
 		return "null"
-	case "Array":
+	case TypeArray:
 		s := "["
 		for i, x := range v.Array {
 			if i > 0 {
@@ -64,7 +66,7 @@ func (v Value) Display() string {
 			s += x.Display()
 		}
 		return s + "]"
-	case "Map":
+	case TypeMap:
 		s := "{"
 		first := true
 		for k, x := range v.Map {

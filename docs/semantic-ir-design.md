@@ -4,7 +4,7 @@
 
 This phase turns a parsed `ast.Stmt` tree into a checked, typed program and then into a backend-neutral intermediate representation. The semantic pass is the gate between syntax and execution: the interpreter, WebAssembly adapter, native backend, and desktop host should all consume the same validated model.
 
-The first implementation should preserve the behavior already established by Rust `src/semantic.rs` and `src/ir.rs`, but should correct two limitations in the prototype Go AST: collection types must have an explicit canonical kind, and IR control flow must represent loop back-edges rather than treating a repeat count as a boolean condition.
+The first implementation preserves the established semantic and IR behavior, while correcting two limitations in the prototype Go AST: collection types must have an explicit canonical kind, and IR control flow must represent loop back-edges rather than treating a repeat count as a boolean condition.
 
 ## Package layout
 
@@ -278,7 +278,7 @@ body:
 exit:
 ```
 
-The current Rust lowerer emits a branch directly on the iteration count and does not model the decrement/back-edge; the Go IR should not carry that bug forward.
+The earlier lowerer emitted a branch directly on the iteration count and does not model the decrement/back-edge; the Go IR should not carry that bug forward.
 
 ## IR validation
 
@@ -321,9 +321,9 @@ The runtime should initially remain an AST/typed-program interpreter. Once the I
 
 1. Normalize collection kinds and add node IDs/spans where needed.
 2. Create `go/semantic/types.go`, compatibility, type formatting, and built-in signatures.
-3. Port symbol scopes and function collection from Rust.
+3. Port symbol scopes and function collection from the established analyzer.
 4. Port expression and statement checks with the improved all-path return analysis.
-5. Add semantic regression tests for every existing Rust semantic test and for unknown-name recovery.
+5. Add semantic regression tests for every established semantic rule and for unknown-name recovery.
 6. Create `go/ir` value IDs, instruction types, blocks, terminators, and validator.
 7. Lower literals, variables, stores, arithmetic, calls, collections, print, assert, and return.
 8. Lower conditionals and counted loops into explicit CFGs.

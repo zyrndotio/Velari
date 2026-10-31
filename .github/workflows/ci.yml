@@ -9,53 +9,28 @@ jobs:
   test:
     strategy:
       matrix:
-        os: [ubuntu-latest, windows-latest]
+        os: [ubuntu-latest, windows-latest, macos-latest]
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@stable
-      - run: cargo test --all-targets
-      - run: cargo fmt -- --check
-      - run: cargo clippy --all-targets --all-features -- -D warnings
-      - run: cargo build --release
-
-  package:
-    if: startsWith(github.ref, 'refs/tags/v')
-    strategy:
-      matrix:
-        include:
-          - os: ubuntu-latest
-            target: x86_64-unknown-linux-gnu
-            archive: velari-linux-x86_64
-            binary: target/release/velari
-          - os: windows-latest
-            target: x86_64-pc-windows-msvc
-            archive: velari-windows-x86_64
-            binary: target/release/velari.exe
-    runs-on: ${{ matrix.os }}
-    steps:
-      - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@stable
+      - uses: actions/setup-go@v5
         with:
-          targets: ${{ matrix.target }}
-      - run: cargo build --release --target ${{ matrix.target }}
-      - name: Stage release files
+          go-version: '1.22.x'
+      - name: Check formatting
         shell: bash
-        run: |
-          mkdir -p staging
-          cp "${{ matrix.binary }}" staging/
-          cp README.md LICENSE NOTICE staging/
-      - name: Create archive
-        shell: bash
-        run: |
-          if [[ "${{ runner.os }}" == "Windows" ]]; then
-            7z a "${{ matrix.archive }}.zip" ./staging/*
-          else
-            tar -czf "${{ matrix.archive }}.tar.gz" -C staging .
-          fi
+        run: test -z "$(gofmt -l cmd go)"
+      - run: go test ./...
+      - run: go build -trimpath -o bin/velari ./cmd/velari
+
+  wasm:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.22.x'
+      - run: GOOS=js GOARCH=wasm go build -trimpath -o velari.wasm ./cmd/velari
       - uses: actions/upload-artifact@v4
         with:
-          name: ${{ matrix.archive }}
-          path: |
-            *.zip
-            *.tar.gz
+          name: velari-wasm
+          path: velari.wasm

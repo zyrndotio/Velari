@@ -2,7 +2,7 @@
 
 ## Scope
 
-The repository now contains an additive Go implementation under `go/` and `cmd/velari/`. The existing Rust toolchain remains available while the Go front end and interpreter establish a stable migration seam. The Go packages have no OS-specific imports, global process state, or GUI dependencies.
+The repository is now Go-only. The Go implementation under `go/` and `cmd/velari/` is the supported compiler and interpreter, and the former Rust implementation has been removed. The Go packages have no OS-specific imports, global process state, or GUI dependencies.
 
 ## Pipeline mapping
 
@@ -11,18 +11,18 @@ The repository now contains an additive Go implementation under `go/` and `cmd/v
    -> go/lexer       span-aware tokens and recoverable lexical errors
    -> go/parser      Pratt expressions + structured statement parser
    -> go/ast         public syntax tree and runtime value model
-   -> semantic pass  next migration seam for Rust semantic.rs parity
+   -> semantic pass  typed symbols, operators, calls, and control-flow checks
    -> go/runtime     tree-walking interpreter with injected io.Writer
    -> future backends (WASM / native IR / Wails or Tauri host)
 ```
 
-The Rust files map directly as follows: `src/lexer.rs` to `go/lexer`, `src/parser.rs` to `go/parser`, `src/ast.rs` to `go/ast`, and `src/interpreter.rs` to `go/runtime`. The C-- reference separates tokenizer, parser, and evaluator. The same separation is retained, but Go interfaces and values replace allocator-owned C++ nodes, which makes the core safe to import from other binaries.
+The previous implementation mapped its modules as follows: `src/lexer.rs` became `go/lexer`, `src/parser.rs` became `go/parser`, `src/ast.rs` became `go/ast`, and `src/interpreter.rs` became `go/runtime`. The C-- reference separates tokenizer, parser, and evaluator. The same separation is retained, but Go interfaces and values replace allocator-owned C++ nodes, which makes the core safe to import from other binaries.
 
 ## Syntax preserved in this first migration
 
-The lexer preserves `begin`/`end`, `let name[: Type] be expression`, `if … then … otherwise … end`, `repeat … times … end`, `function`/`return`, `print`, `assert`, `create window`, arrays, string-keyed maps, indexing, calls, `#` comments, strings with basic escapes, `is`/`==`, arithmetic, and boolean `and`/`or`. The parser retains the Rust precedence order: `or`, `and`, equality, addition/subtraction, and multiplication/division.
+The lexer preserves `begin`/`end`, `let name[: Type] be expression`, `if … then … otherwise … end`, `repeat … times … end`, `function`/`return`, `print`, `assert`, `create window`, arrays, string-keyed maps, indexing, calls, `#` comments, strings with basic escapes, `is`/`==`, arithmetic, and boolean `and`/`or`. The parser retains the established precedence order: `or`, `and`, equality, addition/subtraction, and multiplication/division.
 
-The current Rust code represents all numeric literals as `f64` at the lexer boundary but distinguishes `Int` annotations semantically. The Go runtime preserves integer-looking literals as `Int` and other literals as `Float`; a dedicated semantic/type-checking package should be added before treating this distinction as a compatibility guarantee.
+The original implementation represented all numeric literals as `f64` at the lexer boundary but distinguishes `Int` annotations semantically. The Go runtime preserves integer-looking literals as `Int` and other literals as `Float`; a dedicated semantic/type-checking package should be added before treating this distinction as a compatibility guarantee.
 
 ## Public package boundaries
 
