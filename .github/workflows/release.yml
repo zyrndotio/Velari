@@ -76,7 +76,7 @@ jobs:
         run: sudo apt-get update && sudo apt-get install -y rpm
       - name: Build packages
         run: |
-          ./scripts/package-linux.sh "${GITHUB_REF_NAME#v}" "${{ matrix.arch }}"
+          sh scripts/package-linux.sh "${GITHUB_REF_NAME#v}" "${{ matrix.arch }}"
       - uses: actions/upload-artifact@v4
         with:
           name: packages-linux-${{ matrix.arch }}
