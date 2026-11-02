@@ -26,8 +26,11 @@ try {
 
   $unpack = Join-Path $tmp "unpack"
   Expand-Archive -Path $archive -DestinationPath $unpack -Force
-  $binary = Get-ChildItem -Path $unpack -Filter "velari.exe" -Recurse | Select-Object -First 1
-  if ($null -eq $binary) { throw "Release archive did not contain velari.exe." }
+  $binary = Get-ChildItem -Path $unpack -Filter "velari-*.exe" -Recurse | Select-Object -First 1
+  if ($null -eq $binary) {
+    $binary = Get-ChildItem -Path $unpack -Filter "velari.exe" -Recurse | Select-Object -First 1
+  }
+  if ($null -eq $binary) { throw "Release archive did not contain a VelaRi Windows executable." }
   New-Item -ItemType Directory -Path $InstallDirectory -Force | Out-Null
   Copy-Item $binary.FullName (Join-Path $InstallDirectory "velari.exe") -Force
 
