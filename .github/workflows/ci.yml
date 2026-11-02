@@ -8,6 +8,7 @@ on:
 jobs:
   test:
     strategy:
+      fail-fast: false
       matrix:
         os: [ubuntu-latest, windows-latest, macos-latest]
     runs-on: ${{ matrix.os }}
@@ -18,7 +19,7 @@ jobs:
           go-version: '1.22.x'
       - name: Check formatting
         shell: bash
-        run: test -z "$(gofmt -l cmd go)"
+        run: test -z "$(gofmt -l $(git ls-files '*.go'))"
       - name: Check packaging scripts
         shell: bash
         run: sh -n scripts/install.sh scripts/build-all.sh scripts/package-linux.sh
