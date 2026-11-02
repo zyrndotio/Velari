@@ -40,7 +40,7 @@ irm https://raw.githubusercontent.com/zyrndotio/Velari/main/scripts/install.ps1 
 velari version
 ```
 
-The installer places `velari.exe` in `%LOCALAPPDATA%\VelaRi\bin` and adds that directory to the user `PATH`. WinGet and Chocolatey manifests are planned from the same signed release assets; the direct PowerShell installer works before those catalog submissions are approved.
+The installer places `velari.exe` in `%LOCALAPPDATA%\VelaRi\bin`, adds that directory to the user `PATH`, and registers VelaRi under the current user's Windows **Installed apps** list. The Installed apps entry includes an uninstaller. WinGet and Chocolatey manifests are planned from the same signed release assets; the direct PowerShell installer works before those catalog submissions are approved.
 
 ### Build from source
 
@@ -64,13 +64,18 @@ go run ./cmd/velari --repl
 The CLI commands are:
 
 ```text
-velari version
-velari check <file>
-velari run <file>
-velari --repl
+  velari version
+  velari help
+  velari check <file>
+  velari run <file>
+  velari new <directory>
+  velari init [directory]
+  velari test [path]
+  velari doctor
+  velari --repl
 ```
 
-`check` runs lexing, parsing, semantic analysis, and type checking. `run` performs the same validation before invoking the tree-walking interpreter.
+`check` runs lexing, parsing, semantic analysis, and type checking. `run` performs the same validation before invoking the tree-walking interpreter. `new` and `init` create a minimal `velari.toml` project with a `main.vr` entry point. `test` executes every `.vr` program below a path and reports pass/fail results. `doctor` prints the installation, platform, and backend status.
 
 ## Cross-compilation
 
