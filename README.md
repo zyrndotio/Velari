@@ -1,11 +1,50 @@
 # VelaRi
 
-VelaRi is a small, readable programming language and cross-platform toolchain implemented entirely in Go. The current implementation includes a span-aware lexer, Pratt parser, public AST, semantic analyzer, typed symbol checking, tree-walking interpreter, CLI, REPL, and native/WebAssembly build targets.
+VelaRi is a small, readable programming language and cross-platform toolchain implemented entirely in Go. Its goal is Rust-like performance and security with Go-like readability: fast web applications, fast and secure desktop applications, and a toolchain that remains unusually easy to read and install.
 
-## Requirements
+The current implementation includes a span-aware lexer, Pratt parser, public AST, semantic analyzer, typed symbol checking, tree-walking interpreter, CLI, REPL, and native/WebAssembly build targets. The tree-walking interpreter is the compatibility foundation; native and WebAssembly code generation will consume the validated typed IR described in [`docs/semantic-ir-design.md`](docs/semantic-ir-design.md).
 
-- Go 1.22 or newer
-- No Rust or Cargo dependency
+## Installation
+
+Released binaries do not require Go or Rust. The repository currently publishes verified release archives; the installer scripts select the correct architecture and verify SHA-256 checksums.
+
+### macOS and Linux
+
+```bash
+curl --proto '=https' --tlsv1.2 -fsSL https://raw.githubusercontent.com/zyrndotio/Velari/main/scripts/install.sh | sh
+velari version
+```
+
+Use `VELARI_PREFIX=/usr/local` with `sudo` when a system-wide installation is preferred:
+
+```bash
+curl --proto '=https' --tlsv1.2 -fsSL https://raw.githubusercontent.com/zyrndotio/Velari/main/scripts/install.sh | sudo VELARI_PREFIX=/usr/local sh
+```
+
+The same release artifacts can be installed directly with Linux package managers:
+
+```bash
+sudo apt install ./velari_<version>_amd64.deb
+sudo dnf install ./velari-<version>-1.x86_64.rpm
+sudo yum install ./velari-<version>-1.x86_64.rpm
+```
+
+Homebrew and signed APT/DNF repositories are distribution-layer integrations planned for the stable release channel. See [`packaging/README.md`](packaging/README.md) for the package-manager release contract and [`docs/product-goals.md`](docs/product-goals.md) for the packaging order and security requirements.
+
+### Windows
+
+Run PowerShell as the current user:
+
+```powershell
+irm https://raw.githubusercontent.com/zyrndotio/Velari/main/scripts/install.ps1 | iex
+velari version
+```
+
+The installer places `velari.exe` in `%LOCALAPPDATA%\VelaRi\bin` and adds that directory to the user `PATH`. WinGet and Chocolatey manifests are planned from the same signed release assets; the direct PowerShell installer works before those catalog submissions are approved.
+
+### Build from source
+
+Building from source requires Go 1.22 or newer. Rust and Cargo are not required.
 
 ## Build and test
 
@@ -105,6 +144,7 @@ program, diagnostics := semantic.Analyze(tree)
 The analyzer collects functions before checking bodies, validates declarations and calls, checks collection indexes and operators, and performs all-path return analysis. `Unknown` is used for error recovery so one source error does not create a cascade of unrelated diagnostics.
 
 See [`docs/semantic-ir-design.md`](docs/semantic-ir-design.md) for the typed IR design and the planned lowering pipeline. See [`docs/go-architecture.md`](docs/go-architecture.md) for the package boundaries and WebAssembly/desktop host strategy.
+See [`docs/product-goals.md`](docs/product-goals.md) for the performance, safety, readability, web, desktop, and distribution goals.
 
 ## Development
 

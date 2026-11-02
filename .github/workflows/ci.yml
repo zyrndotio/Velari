@@ -19,6 +19,9 @@ jobs:
       - name: Check formatting
         shell: bash
         run: test -z "$(gofmt -l cmd go)"
+      - name: Check packaging scripts
+        shell: bash
+        run: sh -n scripts/install.sh scripts/build-all.sh scripts/package-linux.sh
       - run: go test ./...
       - run: go build -trimpath -o bin/velari ./cmd/velari
 

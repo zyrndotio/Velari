@@ -8,49 +8,92 @@ permissions:
   contents: write
 
 jobs:
-  release:
+  native:
+    name: Native ${{ matrix.goos }}/${{ matrix.goarch }}
     strategy:
+      fail-fast: false
       matrix:
         include:
           - goos: linux
             goarch: amd64
             suffix: tar.gz
-          - goos: windows
+          - goos: linux
+            goarch: arm64
+            suffix: tar.gz
+          - goos: darwin
             goarch: amd64
-            suffix: zip
+            suffix: tar.gz
           - goos: darwin
             goarch: arm64
             suffix: tar.gz
+          - goos: windows
+            goarch: amd64
+            suffix: zip
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
         with:
           go-version: '1.22.x'
-      - name: Test
-        run: go test ./...
-      - name: Build and package
+      - run: go test ./...
+      - name: Build archive
         shell: bash
         env:
           GOOS: ${{ matrix.goos }}
           GOARCH: ${{ matrix.goarch }}
         run: |
           set -eu
-          mkdir -p staging
+          version="${GITHUB_REF_NAME#v}"
+          mkdir -p staging dist
           binary="velari-${GOOS}-${GOARCH}"
           if [[ "$GOOS" == windows ]]; then binary="$binary.exe"; fi
-          GOOS="$GOOS" GOARCH="$GOARCH" go build -trimpath -ldflags "-s -w" -o "staging/$binary" ./cmd/velari
+          GOOS="$GOOS" GOARCH="$GOARCH" go build -trimpath -ldflags "-s -w -X main.version=$version" -o "staging/$binary" ./cmd/velari
           cp README.md LICENSE NOTICE staging/
           archive="velari-${GOOS}-${GOARCH}.${{ matrix.suffix }}"
           if [[ "${{ matrix.suffix }}" == zip ]]; then
-            (cd staging && zip -9 "../$archive" ./*)
+            (cd staging && zip -9 "../dist/$archive" ./*)
           else
-            tar -czf "$archive" -C staging .
+            tar -czf "dist/$archive" -C staging .
           fi
-          sha256sum "$archive" > "$archive.sha256"
-      - name: Upload release assets
+          sha256sum "dist/$archive" > "dist/$archive.sha256"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: native-${{ matrix.goos }}-${{ matrix.goarch }}
+          path: dist/*
+
+  linux-packages:
+    name: Linux packages ${{ matrix.arch }}
+    strategy:
+      matrix:
+        arch: [amd64, arm64]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.22.x'
+      - name: Install RPM tooling
+        run: sudo apt-get update && sudo apt-get install -y rpm
+      - name: Build packages
+        run: |
+          ./scripts/package-linux.sh "${GITHUB_REF_NAME#v}" "${{ matrix.arch }}"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: packages-linux-${{ matrix.arch }}
+          path: dist/*
+
+  publish:
+    needs: [native, linux-packages]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: '*'
+          path: dist
+          merge-multiple: true
+      - name: Publish GitHub release
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1 || gh release create "$GITHUB_REF_NAME" --title "VelaRi $GITHUB_REF_NAME" --generate-notes
-          gh release upload "$GITHUB_REF_NAME" velari-* --clobber
+          gh release upload "$GITHUB_REF_NAME" dist/* --clobber

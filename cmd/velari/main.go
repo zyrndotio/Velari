@@ -15,7 +15,7 @@ import (
 	"strings"
 )
 
-const version = "0.6.0-go"
+var version = "dev"
 
 func compile(source string) (ast.Stmt, *semantic.Program, error) {
 	ts, lexErrors := lexer.New(source).Tokenize()
