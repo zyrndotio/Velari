@@ -46,7 +46,11 @@ install -m 0755 $ROOT/deb/usr/bin/velari %{buildroot}/usr/bin/velari
 %files
 /usr/bin/velari
 EOF
-  rpmbuild --define "_topdir $ROOT/rpm" -bb "$ROOT/rpm/SPECS/velari.spec" >/dev/null
+  if [ "$RPM_ARCH" = "$(uname -m)" ]; then
+    rpmbuild --define "_topdir $ROOT/rpm" -bb "$ROOT/rpm/SPECS/velari.spec" >/dev/null
+  else
+    rpmbuild --target "$RPM_ARCH" --define "_topdir $ROOT/rpm" -bb "$ROOT/rpm/SPECS/velari.spec" >/dev/null
+  fi
   cp "$ROOT/rpm/RPMS/$RPM_ARCH/velari-$VERSION-1.$RPM_ARCH.rpm" "dist/velari-$VERSION-1.$RPM_ARCH.rpm"
 fi
 sha256sum dist/velari_${VERSION}_${DEB_ARCH}.deb > "dist/velari_${VERSION}_${DEB_ARCH}.deb.sha256"
