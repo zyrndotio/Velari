@@ -26,7 +26,7 @@ Description: VelaRi programming language toolchain
 EOF
 dpkg-deb --build "$ROOT/deb" "dist/velari_${VERSION}_${DEB_ARCH}.deb"
 
-if command -v rpmbuild >/dev/null 2>&1; then
+if command -v rpmbuild >/dev/null 2>&1 && [ "$RPM_ARCH" = "x86_64" ]; then
   mkdir -p "$ROOT/rpm/BUILD" "$ROOT/rpm/BUILDROOT" "$ROOT/rpm/RPMS/$RPM_ARCH" "$ROOT/rpm/SOURCES" "$ROOT/rpm/SPECS" "$ROOT/rpm/SRPMS"
   cat >"$ROOT/rpm/SPECS/velari.spec" <<EOF
 Name: velari
@@ -52,6 +52,8 @@ EOF
     rpmbuild --target "$RPM_ARCH" --define "_topdir $ROOT/rpm" -bb "$ROOT/rpm/SPECS/velari.spec" >/dev/null
   fi
   cp "$ROOT/rpm/RPMS/$RPM_ARCH/velari-$VERSION-1.$RPM_ARCH.rpm" "dist/velari-$VERSION-1.$RPM_ARCH.rpm"
+elif [ "$RPM_ARCH" != "x86_64" ]; then
+  echo "Skipping cross-architecture RPM for $RPM_ARCH; the ARM64 DEB remains available."
 fi
 sha256sum dist/velari_${VERSION}_${DEB_ARCH}.deb > "dist/velari_${VERSION}_${DEB_ARCH}.deb.sha256"
 if [ -f "dist/velari-$VERSION-1.$RPM_ARCH.rpm" ]; then sha256sum "dist/velari-$VERSION-1.$RPM_ARCH.rpm" > "dist/velari-$VERSION-1.$RPM_ARCH.rpm.sha256"; fi

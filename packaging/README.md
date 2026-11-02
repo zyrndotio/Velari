@@ -5,7 +5,7 @@ The release workflow is the source of truth for binaries and SHA-256 checksums. 
 - `velari-<os>-<arch>.tar.gz` for macOS and Linux;
 - `velari-windows-amd64.zip` for Windows;
 - `velari_<version>_<arch>.deb` for APT-compatible systems;
-- `velari-<version>-1.<arch>.rpm` for DNF/YUM-compatible systems;
+- `velari-<version>-1.x86_64.rpm` for DNF/YUM-compatible x86_64 systems;
 - a separate `velari.wasm` artifact can be added when the browser runtime entry point is ready.
 
 ## Direct package installation
@@ -19,6 +19,8 @@ sudo yum install ./velari-<version>-1.x86_64.rpm
 ```
 
 Direct package installation is intentionally supported before a public repository is created. The package files and checksums are uploaded to every tagged GitHub release.
+
+The current release runner produces the ARM64 `.deb` but does not claim an ARM64 RPM: the hosted AMD64 RPM toolchain rejects foreign `aarch64` package metadata. An ARM64 RPM can be added later from a native ARM64 runner or an RPM builder configured for that target.
 
 ## Homebrew
 
