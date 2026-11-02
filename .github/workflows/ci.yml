@@ -19,7 +19,9 @@ jobs:
           go-version: '1.22.x'
       - name: Check formatting
         shell: bash
-        run: test -z "$(gofmt -l $(git ls-files '*.go'))"
+        run: |
+          gofmt -w $(git ls-files '*.go')
+          git diff --exit-code -- '*.go'
       - name: Check packaging scripts
         shell: bash
         run: sh -n scripts/install.sh scripts/build-all.sh scripts/package-linux.sh
